@@ -1,0 +1,103 @@
+.section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--bg-surface);
+  text-align: left;
+  transition: background var(--transition);
+}
+
+.toggle:hover {
+  background: var(--bg-hover);
+}
+
+.chevron {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.langCode {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 48px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusDot[data-status='pending'] { background: var(--text-muted); }
+.statusDot[data-status='analyzing'] {
+  background: var(--suggestion);
+  animation: pulse 1s ease-in-out infinite;
+}
+.statusDot[data-status='done'] { background: var(--approval); }
+.statusDot[data-status='error'] { background: var(--error); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.progressWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.statusText {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.counts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.countDetail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px 12px;
+  background: var(--bg-base);
+}
+
+.noMatch {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--bg-base);
+}
