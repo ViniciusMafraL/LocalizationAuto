@@ -7,11 +7,12 @@ const initialState: AppState = {
     projectType: 'casual_game',
     sourceLang: 'en',
     targetLangs: [],
-    detectedContext: '',
   },
   parsedRows: [],
   detectedColumns: [],
   languageReports: {},
+  batchProgress: null,
+  fileName: '',
 };
 
 function reducer(state: AppState, action: AppAction): AppState {
@@ -27,6 +28,12 @@ function reducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_DETECTED_COLUMNS':
       return { ...state, detectedColumns: action.payload };
+
+    case 'SET_FILE_NAME':
+      return { ...state, fileName: action.payload };
+
+    case 'SET_BATCH_PROGRESS':
+      return { ...state, batchProgress: action.payload };
 
     case 'INIT_LANGUAGE_REPORT': {
       const report: LanguageReport = {
@@ -53,6 +60,7 @@ function reducer(state: AppState, action: AppAction): AppState {
           [action.payload.langCode]: {
             ...state.languageReports[action.payload.langCode],
             status: action.payload.status,
+            ...(action.payload.apiError !== undefined && { apiError: action.payload.apiError }),
           },
         },
       };

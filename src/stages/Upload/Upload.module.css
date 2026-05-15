@@ -140,3 +140,137 @@
   border-radius: var(--radius-md);
   font-family: var(--font-mono);
 }
+
+/* Mode tabs */
+.modeTabs {
+  display: flex;
+  gap: 8px;
+}
+
+.modeTab {
+  flex: 1;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.modeTab:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.modeTabActive {
+  border-color: var(--accent);
+  background: rgba(192, 255, 0, 0.05);
+  color: var(--accent);
+}
+
+.modeTabIcon {
+  font-size: 18px;
+}
+
+/* Image zone */
+.imageZone {
+  border: 1.5px dashed var(--border-focus);
+  border-radius: var(--radius-md);
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.imageZone:hover {
+  border-color: var(--accent);
+  background: rgba(192, 255, 0, 0.04);
+}
+
+.imageZoneLoaded {
+  padding: 12px;
+  cursor: default;
+  border-style: solid;
+  border-color: var(--border);
+}
+
+.imageZoneLoaded:hover {
+  border-color: var(--border);
+  background: var(--bg-surface);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.uploadIcon {
+  font-size: 36px;
+}
+
+.uploadTitle {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.uploadHint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.imagePreview {
+  max-width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.imageActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.ctaBtn {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #0d0d0f;
+  border-radius: var(--radius-md);
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.ctaBtn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.backBtn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.backBtn:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}

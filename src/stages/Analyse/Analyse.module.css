@@ -130,3 +130,150 @@
 .miniError { color: var(--error); }
 .miniSug { color: var(--suggestion); }
 .miniOk { color: var(--approval); }
+
+/* Loader dots */
+.loaderDots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.loaderDots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: bounce 0.9s ease-in-out infinite;
+}
+
+.loaderDots span:nth-child(2) {
+  background: var(--accent2, #7b6ff0);
+  animation-delay: 0.15s;
+}
+
+.loaderDots span:nth-child(3) {
+  background: var(--accent4, #60d0f0);
+  animation-delay: 0.3s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Language chips */
+.langChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.langChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.4s;
+}
+
+.chipActive {
+  color: var(--accent);
+  border-color: rgba(192, 255, 0, 0.4);
+  background: rgba(192, 255, 0, 0.06);
+}
+
+.chipDone {
+  color: var(--approval);
+  border-color: rgba(96, 224, 144, 0.4);
+  background: rgba(96, 224, 144, 0.06);
+}
+
+.chipError {
+  color: var(--error);
+  border-color: rgba(240, 96, 96, 0.3);
+}
+
+.chipFlag { font-size: 15px; }
+.chipStatus { font-size: 13px; }
+
+/* Batch panel */
+.batchPanel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batchLangLabel {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.batchLotLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}
+
+.batchBarWrap {
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.batchBarFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent2, #7b6ff0), var(--accent));
+  transition: width 0.4s ease;
+}
+
+.batchStringsRow {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.batchLog {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  max-height: 90px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.batchLogLine {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.logDone { color: var(--approval); }
+.logActive { color: var(--accent); }
+.logErr { color: var(--error); }

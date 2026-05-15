@@ -1,62 +1,67 @@
 import { useState } from 'react';
-import { FileSpreadsheet, Loader2 } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 import { DropZone } from '../../components/DropZone/DropZone';
 import { ColumnMapper } from '../../components/ColumnMapper/ColumnMapper';
 import { useFileParser } from '../../hooks/useFileParser';
 import { useAppDispatch, useAppState } from '../../store/useAppStore';
-import { detectProjectContext } from '../../lib/claudeClient';
 import type { DetectedColumn } from '../../types';
 import styles from './Upload.module.css';
 
-type UploadStep = 'drop' | 'mapping' | 'generating';
+type UploadStep = 'drop' | 'mapping';
 
 export function Upload() {
   const dispatch = useAppDispatch();
   const { config, detectedColumns, parsedRows } = useAppState();
   const { processFile } = useFileParser();
+
   const [step, setStep] = useState<UploadStep>('drop');
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
 
-  async function handleFile(file: File) {
+  async function handleSheetFile(file: File) {
     setError('');
     setFileName(file.name);
+    dispatch({ type: 'SET_FILE_NAME', payload: file.name });
     await processFile(file);
     setStep('mapping');
   }
 
   function handleColumnsChange(updated: DetectedColumn[]) {
     dispatch({ type: 'SET_DETECTED_COLUMNS', payload: updated });
-    const targetLangs = updated.filter((c) => !c.isSource).map((c) => c.langCode);
-    dispatch({ type: 'SET_CONFIG', payload: { targetLangs } });
   }
 
-  async function handleConfirm() {
-    setStep('generating');
-    setError('');
-    try {
-      const context = await detectProjectContext(config, parsedRows.slice(0, 5));
-      dispatch({ type: 'SET_CONFIG', payload: { detectedContext: context } });
-      dispatch({ type: 'SET_STAGE', payload: 'analyse' });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao gerar contexto via Claude.');
-      setStep('mapping');
+  function handleConfirmSheet() {
+    const selectedLangs = config.targetLangs;
+    function langMatch(selected: string, detected: string): boolean {
+      if (selected.toLowerCase() === detected.toLowerCase()) return true;
+      return selected.toLowerCase().split('-')[0] === detected.toLowerCase().split('-')[0];
     }
+
+    const targetLangs = detectedColumns
+      .filter((c) => !c.isSource && selectedLangs.some((s) => langMatch(s, c.langCode)))
+      .map((c) => c.langCode);
+
+    if (targetLangs.length === 0) {
+      setError(
+        'Nenhuma coluna encontrada para os idiomas selecionados. Verifique os cabeçalhos da planilha.',
+      );
+      return;
+    }
+    dispatch({ type: 'SET_CONFIG', payload: { targetLangs } });
+    dispatch({ type: 'SET_STAGE', payload: 'analyse' });
   }
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.headline}>
-          <h1 className={styles.title}>Upload da planilha</h1>
+          <h1 className={styles.title}>Selecione o arquivo</h1>
           <p className={styles.subtitle}>
-            Suporte a <code>.xlsx</code> e <code>.csv</code>. A primeira linha deve ser o cabeçalho.
+            Planilha com as strings do projeto para análise de localização.
           </p>
         </div>
 
-        {step === 'drop' && (
-          <DropZone onFile={handleFile} />
-        )}
+        {step === 'drop' && <DropZone onFile={handleSheetFile} />}
 
         {step === 'mapping' && (
           <>
@@ -70,13 +75,13 @@ export function Upload() {
                 columns={detectedColumns}
                 sourceLang={config.sourceLang}
                 onChange={handleColumnsChange}
-                onConfirm={handleConfirm}
+                onConfirm={handleConfirmSheet}
               />
             ) : (
               <div className={styles.noColumns}>
                 <p>Nenhuma coluna de idioma detectada automaticamente.</p>
                 <p className={styles.hint}>
-                  Verifique se os cabeçalhos da planilha contêm códigos de idioma (ex: <code>en</code>, <code>pt-br</code>, <code>fr</code>).
+                  Verifique se os cabeçalhos contêm códigos de idioma (ex: <code>en</code>, <code>pt-BR</code>, <code>fr</code>).
                 </p>
                 <button className={styles.retry} onClick={() => setStep('drop')}>
                   Tentar outro arquivo
@@ -86,15 +91,11 @@ export function Upload() {
           </>
         )}
 
-        {step === 'generating' && (
-          <div className={styles.generating}>
-            <Loader2 size={32} className={styles.spinner} />
-            <p className={styles.genLabel}>Analisando contexto do projeto via Claude...</p>
-            <p className={styles.genSub}>Isso leva alguns segundos.</p>
-          </div>
-        )}
-
         {error && <p className={styles.error}>{error}</p>}
+
+        <button className={styles.backBtn} onClick={() => dispatch({ type: 'SET_STAGE', payload: 'setup' })}>
+          ← Voltar
+        </button>
       </div>
     </div>
   );

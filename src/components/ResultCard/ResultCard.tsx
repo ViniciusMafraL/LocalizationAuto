@@ -17,9 +17,6 @@ export function ResultCard({ result }: Props) {
     <div className={`${styles.card} ${styles[result.category]}`}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          {result.errorCode && (
-            <span className={styles.errorCode}>{result.errorCode}</span>
-          )}
           {result.errorType && (
             <span className={styles.errorType}>{result.errorType}</span>
           )}

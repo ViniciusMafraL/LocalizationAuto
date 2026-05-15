@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocQA — Localization QA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Literata:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base: #0d0d0f; --bg-surface: #16161a; --bg-elevated: #1e1e24; --bg-hover: #26262e;
+      --border: #2a2a34; --border-focus: #c0ff00;
+      --text-primary: #f0f0f5; --text-secondary: #9090a8; --text-muted: #5a5a72;
+      --accent: #c0ff00; --accent-hover: #d4ff33;
+      --error: #ff4d4d; --error-bg: rgba(255,77,77,.12);
+      --suggestion: #ffb800; --suggestion-bg: rgba(255,184,0,.12);
+      --approval: #2ecc71; --approval-bg: rgba(46,204,113,.12);
+      --font-heading: 'Syne', sans-serif; --font-mono: 'DM Mono', monospace; --font-body: 'Literata', serif;
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --transition: 180ms ease;
+    }
+
+    html, body, #root { height: 100%; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, h4 { font-family: var(--font-heading); line-height: 1.2; }
+    button { cursor: pointer; font-family: inherit; border: none; outline: none; background: none; }
+    input, select { font-family: inherit; background: none; border: none; outline: none; color: var(--text-primary); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* StageHeader */
+    .sh-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--border); background: var(--bg-surface); }
+    .sh-brand { display: flex; align-items: baseline; gap: 8px; }
+    .sh-brandLoc { font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+    .sh-brandQA { font-family: var(--font-heading); font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+    .sh-brandBadge { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
+    .sh-steps { display: flex; align-items: center; gap: 0; }
+    .sh-step { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); transition: color var(--transition); }
+    .sh-step.sh-active { color: var(--text-primary); }
+    .sh-step.sh-done { color: var(--approval); }
+    .sh-stepNum { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+    .sh-step.sh-active .sh-stepNum { background: var(--accent); border-color: var(--accent); color: #0d0d0f; }
+    .sh-stepLabel { font-size: 13px; }
+    .sh-connector { display: block; width: 32px; height: 1px; background: var(--border); margin: 0 8px; }
+
+    /* CategoryBadge */
+    .cb-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+    .cb-badge.cb-sm { font-size: 11px; padding: 2px 8px; }
+    .cb-badge.cb-error { color: var(--error); background: var(--error-bg); }
+    .cb-badge.cb-suggestion { color: var(--suggestion); background: var(--suggestion-bg); }
+    .cb-badge.cb-approval { color: var(--approval); background: var(--approval-bg); }
+
+    /* ResultCard */
+    .rc-card { border-radius: var(--radius-md); padding: 16px 18px; background: var(--bg-surface); border: 1.5px solid var(--border); border-left: 3px solid transparent; display: flex; flex-direction: column; gap: 10px; animation: fadeIn 200ms ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .rc-card.rc-error { border-left-color: var(--error); }
+    .rc-card.rc-suggestion { border-left-color: var(--suggestion); }
+    .rc-card.rc-approval { border-left-color: var(--approval); }
+    .rc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .rc-headerLeft { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .rc-errorCode { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; }
+    .rc-errorType { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .rc-severity { font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; }
+    .rc-sev_alto { background: rgba(255,77,77,.15); color: var(--error); }
+    .rc-sev_medio { background: rgba(255,184,0,.15); color: var(--suggestion); }
+    .rc-sev_baixo { background: rgba(46,204,113,.15); color: var(--approval); }
+    .rc-rows { display: flex; flex-direction: column; gap: 4px; }
+    .rc-row { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: baseline; }
+    .rc-rowLabel { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+    .rc-rowValue { font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+    .rc-correctionRow .rc-rowLabel { color: var(--approval); }
+    .rc-rowValueCorrection { font-size: 13px; color: var(--approval); line-height: 1.5; font-style: italic; }
+    .rc-empty { color: var(--text-muted); font-style: italic; }
+    .rc-explanation { font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); line-height: 1.55; padding-top: 4px; border-top: 1px solid var(--border); }
+
+    /* DropZone */
+    .dz-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 56px 40px; cursor: pointer; transition: border-color var(--transition), background var(--transition); background: var(--bg-surface); }
+    .dz-zone:hover, .dz-zone.dz-dragging { border-color: var(--accent); background: rgba(108,108,255,.04); }
+    .dz-input { display: none; }
+    .dz-icon { color: var(--text-muted); margin-bottom: 4px; transition: color var(--transition); }
+    .dz-zone:hover .dz-icon, .dz-zone.dz-dragging .dz-icon { color: var(--accent); }
+    .dz-primary { font-family: var(--font-heading); font-size: 17px; font-weight: 600; color: var(--text-primary); }
+    .dz-secondary { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+    /* ColumnMapper */
+    .cm-wrapper { display: flex; flex-direction: column; gap: 16px; }
+    .cm-title { font-family: var(--font-heading); font-size: 18px; font-weight: 700; }
+    .cm-sub { font-size: 14px; color: var(--text-secondary); }
+    .cm-table { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .cm-headerRow, .cm-row { display: grid; grid-template-columns: 1fr 160px 64px; align-items: center; padding: 10px 16px; gap: 16px; }
+    .cm-headerRow { background: var(--bg-elevated); font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .cm-row { border-top: 1px solid var(--border); font-size: 14px; }
+    .cm-row:hover { background: var(--bg-hover); }
+    .cm-colHeader { font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); }
+    .cm-select { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); padding: 5px 8px; font-family: var(--font-mono); font-size: 12px; cursor: pointer; width: 100%; }
+    .cm-select:focus { border-color: var(--border-focus); }
+    .cm-sourceBtn { font-size: 18px; color: var(--text-muted); transition: color var(--transition); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .cm-sourceBtn:hover { color: var(--suggestion); }
+    .cm-sourceBtn.cm-active { color: var(--suggestion); }
+    .cm-confirmBtn { align-self: flex-end; padding: 12px 28px; background: var(--accent); color: #0d0d0f; border-radius: var(--radius-md); font-family: var(--font-heading); font-size: 15px; font-weight: 600; transition: background var(--transition), transform var(--transition); }
+    .cm-confirmBtn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+    /* Setup */
+    .s-page { display: flex; justify-content: center; align-items: flex-start; padding: 60px 24px; min-height: calc(100vh - 65px); }
+    .s-container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 40px; }
+    .s-headline { display: flex; flex-direction: column; gap: 8px; }
+    .s-title { font-size: 32px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+    .s-subtitle { font-size: 15px; color: var(--text-secondary); }
+    .s-section { display: flex; flex-direction: column; gap: 14px; }
+    .s-sectionLabel { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+    .s-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .s-typeCard { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 18px 16px; border-radius: var(--radius-md); border: 1.5px solid var(--border); background: var(--bg-surface); text-align: left; transition: border-color var(--transition), background var(--transition); }
+    .s-typeCard:hover { border-color: var(--border-focus); background: var(--bg-hover); }
+    .s-typeCard.s-selected { border-color: var(--accent); background: rgba(192,255,0,.06); }
+    .s-icon { font-size: 24px; }
+    .s-cardLabel { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+    .s-cardDesc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .s-langGrid { display: grid; grid-template-columns: repeat(auto-fill,minmax(148px,1fr)); gap: 8px; }
+    .s-langBtn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg-surface); text-align: left; transition: border-color var(--transition), background var(--transition); }
+    .s-langBtn:hover { border-color: var(--border-focus); background: var(--bg-hover); }
+    .s-langBtn.s-langSelected { border-color: var(--accent); background: rgba(192,255,0,.06); }
+    .s-langFlag { font-size: 18px; flex-shrink: 0; }
+    .s-langLabel { font-size: 13px; color: var(--text-primary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .s-langCode { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+    .s-cta { align-self: flex-start; padding: 14px 32px; background: var(--accent); color: #0d0d0f; border-radius: var(--radius-md); font-family: var(--font-heading); font-size: 16px; font-weight: 700; transition: background var(--transition), transform var(--transition); }
+    .s-cta:hover { background: var(--accent-hover); transform: translateY(-2px); }
+
+    /* Upload */
+    .u-page { display: flex; justify-content: center; align-items: flex-start; padding: 60px 24px; min-height: calc(100vh - 65px); }
+    .u-container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 32px; }
+    .u-headline { display: flex; flex-direction: column; gap: 8px; }
+    .u-title { font-size: 32px; font-weight: 800; color: var(--text-primary); }
+    .u-subtitle { font-size: 15px; color: var(--text-secondary); }
+    .u-subtitle code { font-family: var(--font-mono); font-size: 13px; background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px; color: var(--text-primary); }
+    .u-fileChip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg-elevated); border-radius: 20px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); align-self: flex-start; }
+    .u-rowCount { color: var(--text-muted); margin-left: 4px; }
+    .u-generating { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 60px 0; }
+    .u-spinner { color: var(--accent); animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .u-genLabel { font-family: var(--font-heading); font-size: 17px; font-weight: 600; color: var(--text-primary); }
+    .u-genSub { font-size: 14px; color: var(--text-muted); }
+    .u-noColumns { display: flex; flex-direction: column; gap: 10px; padding: 32px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center; }
+    .u-noColumns p { color: var(--text-secondary); font-size: 14px; }
+    .u-hint { color: var(--text-muted) !important; font-size: 13px !important; }
+    .u-hint code { font-family: var(--font-mono); background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px; }
+    .u-retry { align-self: center; margin-top: 8px; padding: 10px 20px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; color: var(--text-secondary); transition: border-color var(--transition), color var(--transition); }
+    .u-retry:hover { border-color: var(--accent); color: var(--text-primary); }
+    .u-error { color: var(--error); font-size: 14px; background: var(--error-bg); padding: 12px 16px; border-radius: var(--radius-md); font-family: var(--font-mono); }
+
+    /* Analyse */
+    .an-page { min-height: calc(100vh - 72px); display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+    .an-container { width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 40px; }
+    .an-headline { display: flex; flex-direction: column; gap: 8px; }
+    .an-title { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+    .an-subtitle { color: var(--text-secondary); font-size: 15px; }
+    .an-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 16px; }
+    .an-card { background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: border-color var(--transition); }
+    .an-card.an-analyzing { border-color: var(--accent); }
+    .an-card.an-done { border-color: var(--approval); }
+    .an-card.an-error { border-color: var(--error); }
+    .an-cardTop { display: flex; align-items: center; justify-content: space-between; }
+    .an-langCode { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--text-primary); text-transform: uppercase; }
+    .an-statusIcon { display: flex; align-items: center; }
+    .an-spinner { animation: spin 1s linear infinite; color: var(--accent); }
+    .an-iconDone { color: var(--approval); }
+    .an-iconError { color: var(--error); }
+    .an-statusText { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }
+    .an-progressBar { height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden; }
+    .an-progressFill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s ease; }
+    .an-card.an-done .an-progressFill { background: var(--approval); }
+    .an-card.an-error .an-progressFill { background: var(--error); }
+    .an-mini { display: flex; gap: 10px; font-size: 12px; font-family: var(--font-mono); }
+    .an-miniError { color: var(--error); }
+    .an-miniSug { color: var(--suggestion); }
+    .an-miniOk { color: var(--approval); }
+
+    /* Report */
+    .rp-page { display: flex; justify-content: center; padding: 48px 24px; min-height: calc(100vh - 65px); }
+    .rp-container { width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+    .rp-topBar { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+    .rp-headline { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .rp-title { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+    .rp-context { font-family: var(--font-body); font-style: italic; font-size: 13px; color: var(--text-secondary); line-height: 1.55; max-width: 560px; }
+    .rp-resetBtn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); white-space: nowrap; transition: border-color var(--transition), color var(--transition); flex-shrink: 0; }
+    .rp-resetBtn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+    .rp-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .rp-stat { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-radius: var(--radius-md); border: 1.5px solid var(--border); background: var(--bg-surface); }
+    .rp-statError { border-left: 3px solid var(--error); }
+    .rp-statSuggestion { border-left: 3px solid var(--suggestion); }
+    .rp-statApproval { border-left: 3px solid var(--approval); }
+    .rp-statError svg { color: var(--error); }
+    .rp-statSuggestion svg { color: var(--suggestion); }
+    .rp-statApproval svg { color: var(--approval); }
+    .rp-statNum { font-family: var(--font-heading); font-size: 24px; font-weight: 800; color: var(--text-primary); }
+    .rp-statLabel { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+    .rp-langTabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rp-langTab { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg-surface); font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); transition: border-color var(--transition), color var(--transition), background var(--transition); }
+    .rp-langTab:hover { border-color: var(--border-focus); color: var(--text-primary); }
+    .rp-langTab.rp-langTabActive { border-color: var(--accent); color: var(--accent); background: rgba(192,255,0,.06); }
+    .rp-langTabCode { text-transform: uppercase; font-weight: 600; }
+    .rp-langTabBadge { display: flex; gap: 4px; }
+    .rp-badgeError { background: var(--error-bg); color: var(--error); font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+    .rp-badgeSug { background: var(--suggestion-bg); color: var(--suggestion); font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+    .rp-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .rp-searchWrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 8px 14px; transition: border-color var(--transition); }
+    .rp-searchWrap:focus-within { border-color: var(--border-focus); }
+    .rp-searchIcon { color: var(--text-muted); flex-shrink: 0; }
+    .rp-searchInput { flex: 1; font-size: 14px; color: var(--text-primary); background: none; }
+    .rp-searchInput::placeholder { color: var(--text-muted); }
+    .rp-tabs { display: flex; gap: 4px; background: var(--bg-surface); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 4px; }
+    .rp-tab { padding: 6px 14px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); transition: background var(--transition), color var(--transition); }
+    .rp-tab:hover { color: var(--text-primary); }
+    .rp-tab.rp-tabActive { background: var(--bg-elevated); color: var(--text-primary); }
+    .rp-results { display: flex; flex-direction: column; gap: 8px; }
+    .rp-empty { padding: 48px; text-align: center; color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const {
+      useState, useEffect, useRef, useReducer,
+      createContext, useContext, useCallback
+    } = React;
+
+    // ── Anthropic SDK (lazy-loaded via dynamic import) ──────────────────────
+    let _claudeInstance = null;
+    async function getClaude() {
+      if (_claudeInstance) return _claudeInstance;
+      const mod = await import('https://esm.sh/@anthropic-ai/sdk@0.52.0');
+      const Anthropic = mod.default;
+      _claudeInstance = new Anthropic({ dangerouslyAllowBrowser: true });
+      return _claudeInstance;
+    }
+
+    // ── Constants ────────────────────────────────────────────────────────────
+    const MODEL = 'claude-haiku-4-5-20251001';
+    const BATCH_SIZE = 15;
+
+    const LANG_CODE_MAP = {
+      en:'en', eng:'en', english:'en', inglês:'en', ingles:'en',
+      'pt-br':'pt-br', ptbr:'pt-br', 'pt_br':'pt-br', portuguese:'pt-br',
+      'portugues br':'pt-br', 'português':'pt-br', portugues:'pt-br',
+      pt:'pt', 'pt-pt':'pt',
+      fr:'fr', fra:'fr', french:'fr', français:'fr', frances:'fr', francés:'fr',
+      es:'es', esp:'es', spanish:'es', español:'es', espanol:'es', espanhol:'es',
+      de:'de', deu:'de', german:'de', deutsch:'de', alemão:'de', alemao:'de',
+      it:'it', ita:'it', italian:'it', italiano:'it',
+      ja:'ja', jpn:'ja', japanese:'ja', japonês:'ja', japones:'ja',
+      ko:'ko', kor:'ko', korean:'ko', coreano:'ko',
+      zh:'zh', zho:'zh', chinese:'zh', chinês:'zh', chines:'zh',
+      'zh-cn':'zh-cn', zhcn:'zh-cn',
+      'zh-tw':'zh-tw', zhtw:'zh-tw',
+      ru:'ru', rus:'ru', russian:'ru', russo:'ru',
+      ar:'ar', ara:'ar', arabic:'ar', árabe:'ar', arabe:'ar',
+      nl:'nl', nld:'nl', dutch:'nl', holandês:'nl', holandes:'nl',
+      pl:'pl', pol:'pl', polish:'pl', polonês:'pl', polones:'pl',
+      tr:'tr', tur:'tr', turkish:'tr', turco:'tr',
+      sv:'sv', swe:'sv', swedish:'sv', sueco:'sv',
+      da:'da', dan:'da', danish:'da', dinamarquês:'da',
+      fi:'fi', fin:'fi', finnish:'fi', finlandês:'fi',
+      nb:'nb', nor:'nb', norwegian:'nb', norueguês:'nb',
+      cs:'cs', cze:'cs', czech:'cs', tcheco:'cs',
+      hu:'hu', hun:'hu', hungarian:'hu', húngaro:'hu',
+      ro:'ro', ron:'ro', romanian:'ro', romeno:'ro',
+      uk:'uk', ukr:'uk', ukrainian:'uk', ucraniano:'uk',
+      vi:'vi', vie:'vi', vietnamese:'vi', vietnamita:'vi',
+      th:'th', tha:'th', thai:'th', tailandês:'th',
+      id:'id', ind:'id', indonesian:'id', indonésio:'id',
+      ms:'ms', msa:'ms', malay:'ms', malaio:'ms',
+    };
+
+    const PROJECT_TYPES = [
+      { value:'casual_game', label:'Casual Game', desc:'Tom leve, energético, frases curtas', icon:'🎮' },
+      { value:'formal_app',  label:'Formal App',  desc:'Tom profissional, técnico, preciso', icon:'💼' },
+      { value:'mixed',       label:'Mixed',       desc:'Contexto variado, tom misto',       icon:'🔀' },
+    ];
+
+    const LANGUAGES = [
+      { code:'en',    label:'English',       flag:'🇺🇸' },
+      { code:'pt-br', label:'Português BR',  flag:'🇧🇷' },
+      { code:'pt',    label:'Português',     flag:'🇵🇹' },
+      { code:'fr',    label:'Français',      flag:'🇫🇷' },
+      { code:'es',    label:'Español',       flag:'🇪🇸' },
+      { code:'de',    label:'Deutsch',       flag:'🇩🇪' },
+      { code:'it',    label:'Italiano',      flag:'🇮🇹' },
+      { code:'ja',    label:'日本語',         flag:'🇯🇵' },
+      { code:'ko',    label:'한국어',          flag:'🇰🇷' },
+      { code:'zh-cn', label:'中文 (简体)',    flag:'🇨🇳' },
+      { code:'zh-tw', label:'中文 (繁體)',    flag:'🇹🇼' },
+      { code:'ru',    label:'Русский',       flag:'🇷🇺' },
+    ];
+
+    const LANG_OPTIONS = [
+      'en','pt-br','pt','fr','es','de','it','ja','ko','zh','zh-cn','zh-tw',
+      'ru','ar','nl','pl','tr','sv','da','fi','nb','cs','hu','ro','uk','vi','th','id','ms',
+    ];
+
+    // ── Claude client ────────────────────────────────────────────────────────
+    function friendlyError(err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('overloaded'))
+        return new Error('Limite de requisições atingido. Aguarde alguns segundos e tente novamente.');
+      return err instanceof Error ? err : new Error(msg);
+    }
+
+    async function withRetry(fn, retries = 3) {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try { return await fn(); }
+        catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const retryable = msg.includes('429') || msg.includes('overloaded') || msg.includes('529');
+          if (!retryable || attempt === retries - 1) throw friendlyError(err);
+          await new Promise(r => setTimeout(r, (attempt + 1) * 15000));
+        }
+      }
+      throw new Error('Número máximo de tentativas atingido.');
+    }
+
+    function extractText(response) {
+      const block = response.content.find(b => b.type === 'text');
+      return block ? block.text.trim() : '';
+    }
+
+    function parseJsonSafe(text) {
+      const cleaned = text.replace(/```json\s*/gi,'').replace(/```\s*/gi,'').trim();
+      try { return JSON.parse(cleaned); }
+      catch {
+        const match = cleaned.match(/\[[\s\S]*\]/);
+        if (match) { try { return JSON.parse(match[0]); } catch { return []; } }
+        return [];
+      }
+    }
+
+    async function detectProjectContext(config, sampleRows) {
+      const client = await getClaude();
+      const samples = sampleRows.slice(0,5).map((r,i) => `${i+1}. ${r.sourceText}`).join('\n');
+      const prompt = `Você é um especialista em localização. Analise estas strings e descreva em 2-3 frases o contexto do projeto.\nTipo declarado: ${config.projectType}. Informe: gênero/domínio, tom, padrões de formatação observados.\nResponda SOMENTE o texto descritivo, sem JSON.\n\nStrings de amostra:\n${samples}`;
+      const response = await withRetry(() => client.messages.create({
+        model: MODEL, max_tokens: 512,
+        messages: [{ role:'user', content: prompt }],
+      }));
+      return extractText(response);
+    }
+
+    async function analyseRows(config, targetLang, rows) {
+      const client = await getClaude();
+      const lines = rows.map(r => `${r.rowIndex} | ${r.sourceText} | ${r.translations[targetLang] ?? ''}`).join('\n');
+      const prompt = `Você é um especialista em QA de localização.\nCONTEXTO DO PROJETO: ${config.detectedContext}\nTIPO: ${config.projectType} | IDIOMA FONTE: ${config.sourceLang} | IDIOMA ALVO: ${targetLang}\n\nCategorize cada tradução. Campos obrigatórios:\n- rowIndex: número da linha\n- category: "error" | "suggestion" | "approval"\n- explanation: 1-2 frases explicando o problema ou aprovação\n- severity: "alto" | "medio" | "baixo" (apenas para errors e suggestions)\n- errorCode: código curto do tipo de problema ex: "TAG_BREAK", "MISTRANSLATION", "TONE", "MISSING" (apenas para errors)\n- errorType: descrição curta do tipo de erro em português ex: "Tag quebrada", "Mistradução" (apenas para errors)\n- correction: sugestão de texto corrigido (apenas para errors e suggestions)\n\nRegras:\n- error: mistradução, tom errado, tags quebradas ({0}, %s, <b>), texto ausente\n- suggestion: correto mas poderia encaixar melhor no contexto/tom\n- approval: correto, tom adequado, bem formatado (omita severity/errorCode/errorType/correction)\n\nResponda APENAS com um JSON array sem markdown:\n[{ "rowIndex": N, "category": "...", "explanation": "...", "severity": "...", "errorCode": "...", "errorType": "...", "correction": "..." }]\n\nTRADUÇÕES:\n${lines}`;
+      const response = await withRetry(() => client.messages.create({
+        model: MODEL, max_tokens: 2048,
+        messages: [{ role:'user', content: prompt }],
+      }));
+      const raw = parseJsonSafe(extractText(response));
+      const rowMap = new Map(rows.map(r => [r.rowIndex, r]));
+      const validCats = ['error','suggestion','approval'];
+      return raw.map(item => {
+        const row = rowMap.get(item.rowIndex);
+        const category = validCats.includes(item.category) ? item.category : 'error';
+        return {
+          rowIndex: item.rowIndex,
+          sourceText: row?.sourceText ?? '',
+          targetLang,
+          translatedText: row?.translations[targetLang] ?? '',
+          category,
+          explanation: item.explanation ?? 'Falha ao interpretar resposta da IA.',
+          severity: item.severity,
+          correction: item.correction,
+          errorCode: item.errorCode,
+          errorType: item.errorType,
+        };
+      });
+    }
+
+    // ── Sheet / Column logic ─────────────────────────────────────────────────
+    function normalise(s) {
+      return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\-]/g,' ').trim().replace(/\s+/g,' ');
+    }
+
+    function detectLang(header) {
+      const norm = normalise(header);
+      if (LANG_CODE_MAP[norm]) return LANG_CODE_MAP[norm];
+      const compact = norm.replace(/\s/g,'');
+      if (LANG_CODE_MAP[compact]) return LANG_CODE_MAP[compact];
+      for (const [key, code] of Object.entries(LANG_CODE_MAP)) {
+        if (norm.includes(key) || key.includes(norm)) return code;
+      }
+      return null;
+    }
+
+    function detectColumns(headers, sourceLang) {
+      const results = [];
+      const seen = new Set();
+      for (let i = 0; i < headers.length; i++) {
+        const header = headers[i];
+        const langCode = detectLang(header);
+        if (!langCode || seen.has(langCode)) continue;
+        seen.add(langCode);
+        results.push({ colIndex: i, header, langCode, isSource: langCode === sourceLang });
+      }
+      return results;
+    }
+
+    function parseSheet(buffer) {
+      const workbook = XLSX.read(buffer, { type:'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const raw = XLSX.utils.sheet_to_json(worksheet, { defval:'', raw: false });
+      if (raw.length === 0) return { headers:[], rows:[] };
+      const headers = Object.keys(raw[0]);
+      const rows = raw.map(r => Object.fromEntries(headers.map(h => [h, String(r[h] ?? '')])));
+      return { headers, rows };
+    }
+
+    function chunk(arr, size) {
+      const out = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    }
+
+    // ── Global state ─────────────────────────────────────────────────────────
+    const initialState = {
+      stage: 'setup',
+      config: { projectType:'casual_game', sourceLang:'en', targetLangs:[], detectedContext:'' },
+      parsedRows: [],
+      detectedColumns: [],
+      languageReports: {},
+    };
+
+    function reducer(state, action) {
+      switch (action.type) {
+        case 'SET_STAGE':    return { ...state, stage: action.payload };
+        case 'SET_CONFIG':   return { ...state, config: { ...state.config, ...action.payload } };
+        case 'SET_PARSED_ROWS':     return { ...state, parsedRows: action.payload };
+        case 'SET_DETECTED_COLUMNS': return { ...state, detectedColumns: action.payload };
+        case 'INIT_LANGUAGE_REPORT': {
+          const report = { langCode: action.payload.langCode, status:'pending', results:[], errorCount:0, suggestionCount:0, approvalCount:0, progress:0, total: action.payload.total };
+          return { ...state, languageReports: { ...state.languageReports, [action.payload.langCode]: report } };
+        }
+        case 'SET_LANGUAGE_STATUS':
+          return { ...state, languageReports: { ...state.languageReports, [action.payload.langCode]: { ...state.languageReports[action.payload.langCode], status: action.payload.status } } };
+        case 'APPEND_RESULT': {
+          const lang = action.payload.targetLang;
+          const existing = state.languageReports[lang];
+          if (!existing) return state;
+          const cat = action.payload.category;
+          return { ...state, languageReports: { ...state.languageReports, [lang]: { ...existing, results:[...existing.results, action.payload], errorCount: existing.errorCount + (cat==='error'?1:0), suggestionCount: existing.suggestionCount + (cat==='suggestion'?1:0), approvalCount: existing.approvalCount + (cat==='approval'?1:0) } } };
+        }
+        case 'UPDATE_PROGRESS':
+          return { ...state, languageReports: { ...state.languageReports, [action.payload.langCode]: { ...state.languageReports[action.payload.langCode], progress: action.payload.progress } } };
+        case 'RESET': return initialState;
+        default: return state;
+      }
+    }
+
+    const AppStateContext    = createContext(initialState);
+    const AppDispatchContext = createContext(() => {});
+    function useAppState()    { return useContext(AppStateContext); }
+    function useAppDispatch() { return useContext(AppDispatchContext); }
+
+    // ── SVG Icons ────────────────────────────────────────────────────────────
+    const IconUpload = ({size=24, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    );
+    const IconFileSpreadsheet = ({size=14, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="8" y1="13" x2="16" y2="13"/>
+        <line x1="8" y1="17" x2="16" y2="17"/>
+        <line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>
+    );
+    const IconLoader2 = ({size=24, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+    );
+    const IconCheckCircle2 = ({size=18, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+    );
+    const IconXCircle = ({size=18, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+    );
+    const IconSearch = ({size=14, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    );
+    const IconRotateCcw = ({size=14, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+    );
+    const IconAlertCircle = ({size=18, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    );
+    const IconLightbulb = ({size=18, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+        <path d="M9 18h6"/>
+        <path d="M10 22h4"/>
+      </svg>
+    );
+    const IconCheckCircle = ({size=18, className=''}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    );
+
+    // ── UI Components ────────────────────────────────────────────────────────
+    function CategoryBadge({ category, size='md' }) {
+      const labels = { error:'Erro', suggestion:'Sugestão', approval:'Aprovação' };
+      return (
+        <span className={`cb-badge cb-${category}${size==='sm' ? ' cb-sm' : ''}`}>
+          {labels[category]}
+        </span>
+      );
+    }
+
+    function ResultCard({ result }) {
+      const severityLabel = { alto:'Alto', medio:'Médio', baixo:'Baixo' };
+      return (
+        <div className={`rc-card rc-${result.category}`}>
+          <div className="rc-header">
+            <div className="rc-headerLeft">
+              {result.errorCode && <span className="rc-errorCode">{result.errorCode}</span>}
+              {result.errorType && <span className="rc-errorType">{result.errorType}</span>}
+              {result.severity  && <span className={`rc-severity rc-sev_${result.severity}`}>{severityLabel[result.severity] ?? result.severity}</span>}
+            </div>
+            <CategoryBadge category={result.category} size="sm" />
+          </div>
+          <div className="rc-rows">
+            <div className="rc-row">
+              <span className="rc-rowLabel">Fonte</span>
+              <span className="rc-rowValue">{result.sourceText || <em className="rc-empty">—</em>}</span>
+            </div>
+            <div className="rc-row">
+              <span className="rc-rowLabel">Tradução</span>
+              <span className="rc-rowValue">{result.translatedText || <em className="rc-empty">— sem tradução —</em>}</span>
+            </div>
+            {result.correction && (
+              <div className="rc-row rc-correctionRow">
+                <span className="rc-rowLabel">Correção</span>
+                <span className="rc-rowValueCorrection">{result.correction}</span>
+              </div>
+            )}
+          </div>
+          <div className="rc-explanation">{result.explanation}</div>
+        </div>
+      );
+    }
+
+    function DropZone({ onFile }) {
+      const [dragging, setDragging] = useState(false);
+
+      function handleFile(file) {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'xlsx' || ext === 'csv') onFile(file);
+      }
+
+      return (
+        <label
+          className={`dz-zone${dragging ? ' dz-dragging' : ''}`}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        >
+          <input type="file" accept=".xlsx,.csv" className="dz-input" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          <IconUpload size={32} className="dz-icon" />
+          <p className="dz-primary">Arraste sua planilha aqui</p>
+          <p className="dz-secondary">ou clique para selecionar · .xlsx / .csv</p>
+        </label>
+      );
+    }
+
+    function ColumnMapper({ columns, sourceLang, onChange, onConfirm }) {
+      const [local, setLocal] = useState(columns);
+
+      function updateLang(idx, langCode) {
+        const updated = local.map((col, i) => i === idx ? { ...col, langCode, isSource: langCode === sourceLang } : col);
+        setLocal(updated);
+        onChange(updated);
+      }
+
+      function toggleSource(idx) {
+        const updated = local.map((col, i) => ({ ...col, isSource: i === idx }));
+        setLocal(updated);
+        onChange(updated);
+      }
+
+      return (
+        <div className="cm-wrapper">
+          <h3 className="cm-title">Colunas detectadas</h3>
+          <p className="cm-sub">Revise e corrija se necessário antes de continuar.</p>
+          <div className="cm-table">
+            <div className="cm-headerRow">
+              <span>Cabeçalho original</span>
+              <span>Idioma detectado</span>
+              <span>Fonte</span>
+            </div>
+            {local.map((col, i) => (
+              <div key={col.colIndex} className="cm-row">
+                <span className="cm-colHeader">{col.header}</span>
+                <select className="cm-select" value={col.langCode} onChange={e => updateLang(i, e.target.value)}>
+                  {LANG_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <button
+                  className={`cm-sourceBtn${col.isSource ? ' cm-active' : ''}`}
+                  onClick={() => toggleSource(i)}
+                  title="Definir como idioma fonte"
+                >
+                  {col.isSource ? '★' : '☆'}
+                </button>
+              </div>
+            ))}
+          </div>
+          <button className="cm-confirmBtn" onClick={onConfirm}>Confirmar e analisar →</button>
+        </div>
+      );
+    }
+
+    function StageHeader({ current }) {
+      const STAGES = [
+        { key:'setup',   label:'Configuração', num:1 },
+        { key:'upload',  label:'Upload',       num:2 },
+        { key:'analyse', label:'Análise',      num:3 },
+        { key:'report',  label:'Relatório',    num:4 },
+      ];
+      const currentIdx = STAGES.findIndex(s => s.key === current);
+      return (
+        <header className="sh-header">
+          <div className="sh-brand">
+            <span className="sh-brandLoc">Loc</span>
+            <span className="sh-brandQA">QA</span>
+            <span className="sh-brandBadge">v0.1</span>
+          </div>
+          <nav className="sh-steps">
+            {STAGES.map((stage, idx) => {
+              const state = idx < currentIdx ? 'done' : idx === currentIdx ? 'active' : 'pending';
+              return (
+                <div key={stage.key} className={`sh-step sh-${state}`}>
+                  <span className="sh-stepNum">{state === 'done' ? '✓' : stage.num}</span>
+                  <span className="sh-stepLabel">{stage.label}</span>
+                  {idx < STAGES.length - 1 && <span className="sh-connector" />}
+                </div>
+              );
+            })}
+          </nav>
+        </header>
+      );
+    }
+
+    // ── Stage: Setup ─────────────────────────────────────────────────────────
+    function Setup() {
+      const dispatch = useAppDispatch();
+      const { config } = useAppState();
+      const [projectType, setProjectType] = useState(config.projectType);
+      const [sourceLang, setSourceLang]   = useState(config.sourceLang);
+
+      function handleContinue() {
+        dispatch({ type:'SET_CONFIG', payload: { projectType, sourceLang } });
+        dispatch({ type:'SET_STAGE',  payload: 'upload' });
+      }
+
+      return (
+        <div className="s-page">
+          <div className="s-container">
+            <div className="s-headline">
+              <h1 className="s-title">Configuração do projeto</h1>
+              <p className="s-subtitle">Defina o contexto para que a IA calibre suas análises.</p>
+            </div>
+
+            <section className="s-section">
+              <label className="s-sectionLabel">Tipo de projeto</label>
+              <div className="s-cards">
+                {PROJECT_TYPES.map(pt => (
+                  <button
+                    key={pt.value}
+                    className={`s-typeCard${projectType === pt.value ? ' s-selected' : ''}`}
+                    onClick={() => setProjectType(pt.value)}
+                  >
+                    <span className="s-icon">{pt.icon}</span>
+                    <span className="s-cardLabel">{pt.label}</span>
+                    <span className="s-cardDesc">{pt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="s-section">
+              <label className="s-sectionLabel">Idioma fonte (original)</label>
+              <div className="s-langGrid">
+                {LANGUAGES.map(l => (
+                  <button
+                    key={l.code}
+                    className={`s-langBtn${sourceLang === l.code ? ' s-langSelected' : ''}`}
+                    onClick={() => setSourceLang(l.code)}
+                  >
+                    <span className="s-langFlag">{l.flag}</span>
+                    <span className="s-langLabel">{l.label}</span>
+                    <span className="s-langCode">{l.code}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <button className="s-cta" onClick={handleContinue}>Continuar →</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Stage: Upload ────────────────────────────────────────────────────────
+    function Upload() {
+      const dispatch = useAppDispatch();
+      const { config, detectedColumns, parsedRows } = useAppState();
+      const [step, setStep]         = useState('drop');
+      const [fileName, setFileName] = useState('');
+      const [error, setError]       = useState('');
+
+      async function handleFile(file) {
+        setError('');
+        setFileName(file.name);
+        const buffer = await file.arrayBuffer();
+        const { headers, rows } = parseSheet(buffer);
+        const detected = detectColumns(headers, config.sourceLang);
+        dispatch({ type:'SET_DETECTED_COLUMNS', payload: detected });
+        const sourceCol = detected.find(c => c.isSource);
+        if (sourceCol) {
+          const parsed = rows.map((row, i) => {
+            const translations = {};
+            for (const col of detected) {
+              if (!col.isSource) translations[col.langCode] = row[col.header] ?? '';
+            }
+            return { rowIndex:i, key: undefined, sourceText: row[sourceCol.header] ?? '', translations };
+          }).filter(r => r.sourceText.trim() !== '');
+          dispatch({ type:'SET_PARSED_ROWS', payload: parsed });
+        }
+        setStep('mapping');
+      }
+
+      function handleColumnsChange(updated) {
+        dispatch({ type:'SET_DETECTED_COLUMNS', payload: updated });
+        const targetLangs = updated.filter(c => !c.isSource).map(c => c.langCode);
+        dispatch({ type:'SET_CONFIG', payload: { targetLangs } });
+      }
+
+      async function handleConfirm() {
+        setStep('generating');
+        setError('');
+        try {
+          const context = await detectProjectContext(config, parsedRows.slice(0, 5));
+          dispatch({ type:'SET_CONFIG', payload: { detectedContext: context } });
+          dispatch({ type:'SET_STAGE',  payload: 'analyse' });
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Erro ao gerar contexto via Claude.');
+          setStep('mapping');
+        }
+      }
+
+      return (
+        <div className="u-page">
+          <div className="u-container">
+            <div className="u-headline">
+              <h1 className="u-title">Upload da planilha</h1>
+              <p className="u-subtitle">Suporte a <code>.xlsx</code> e <code>.csv</code>. A primeira linha deve ser o cabeçalho.</p>
+            </div>
+
+            {step === 'drop' && <DropZone onFile={handleFile} />}
+
+            {step === 'mapping' && (
+              <>
+                <div className="u-fileChip">
+                  <IconFileSpreadsheet size={14} />
+                  <span>{fileName}</span>
+                  <span className="u-rowCount">{parsedRows.length} linhas</span>
+                </div>
+                {detectedColumns.length > 0 ? (
+                  <ColumnMapper
+                    columns={detectedColumns}
+                    sourceLang={config.sourceLang}
+                    onChange={handleColumnsChange}
+                    onConfirm={handleConfirm}
+                  />
+                ) : (
+                  <div className="u-noColumns">
+                    <p>Nenhuma coluna de idioma detectada automaticamente.</p>
+                    <p className="u-hint">Verifique se os cabeçalhos da planilha contêm códigos de idioma (ex: <code>en</code>, <code>pt-br</code>, <code>fr</code>).</p>
+                    <button className="u-retry" onClick={() => setStep('drop')}>Tentar outro arquivo</button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {step === 'generating' && (
+              <div className="u-generating">
+                <IconLoader2 size={32} className="u-spinner" />
+                <p className="u-genLabel">Analisando contexto do projeto via Claude...</p>
+                <p className="u-genSub">Isso leva alguns segundos.</p>
+              </div>
+            )}
+
+            {error && <p className="u-error">{error}</p>}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Stage: Analyse ───────────────────────────────────────────────────────
+    function Analyse() {
+      const dispatch = useAppDispatch();
+      const { config, parsedRows, languageReports } = useAppState();
+      const started = useRef(false);
+
+      useEffect(() => {
+        if (started.current) return;
+        started.current = true;
+
+        async function run() {
+          const targetLangs = config.targetLangs;
+          for (const lang of targetLangs) {
+            dispatch({ type:'INIT_LANGUAGE_REPORT', payload: { langCode: lang, total: parsedRows.length } });
+          }
+          for (const lang of targetLangs) {
+            dispatch({ type:'SET_LANGUAGE_STATUS', payload: { langCode: lang, status:'analyzing' } });
+            const batches = chunk(parsedRows, BATCH_SIZE);
+            let processed = 0;
+            try {
+              for (const batch of batches) {
+                const results = await analyseRows(config, lang, batch);
+                for (const result of results) {
+                  dispatch({ type:'APPEND_RESULT', payload: result });
+                }
+                processed += batch.length;
+                dispatch({ type:'UPDATE_PROGRESS', payload: { langCode: lang, progress: processed } });
+              }
+              dispatch({ type:'SET_LANGUAGE_STATUS', payload: { langCode: lang, status:'done' } });
+            } catch (err) {
+              console.error(`Erro ao analisar ${lang}:`, err);
+              dispatch({ type:'SET_LANGUAGE_STATUS', payload: { langCode: lang, status:'error' } });
+            }
+          }
+          dispatch({ type:'SET_STAGE', payload:'report' });
+        }
+
+        run();
+      }, []);
+
+      const langs = config.targetLangs;
+
+      return (
+        <div className="an-page">
+          <div className="an-container">
+            <div className="an-headline">
+              <h1 className="an-title">Analisando traduções</h1>
+              <p className="an-subtitle">Claude está revisando cada idioma. Isso pode levar alguns minutos.</p>
+            </div>
+            <div className="an-cards">
+              {langs.map(lang => {
+                const report  = languageReports[lang];
+                const status  = report?.status ?? 'pending';
+                const progress = report?.progress ?? 0;
+                const total    = report?.total ?? 0;
+                const pct      = total > 0 ? Math.round((progress / total) * 100) : 0;
+                return (
+                  <div key={lang} className={`an-card an-${status}`}>
+                    <div className="an-cardTop">
+                      <span className="an-langCode">{lang}</span>
+                      <div className="an-statusIcon">
+                        {status === 'analyzing' && <IconLoader2    size={18} className="an-spinner" />}
+                        {status === 'done'      && <IconCheckCircle2 size={18} className="an-iconDone" />}
+                        {status === 'error'     && <IconXCircle    size={18} className="an-iconError" />}
+                      </div>
+                    </div>
+                    <div className="an-statusText">
+                      {status === 'pending'   && 'Aguardando...'}
+                      {status === 'analyzing' && `${progress} / ${total} linhas`}
+                      {status === 'done'      && `${total} linhas concluídas`}
+                      {status === 'error'     && 'Erro na análise'}
+                    </div>
+                    <div className="an-progressBar">
+                      <div className="an-progressFill" style={{ width: status === 'done' ? '100%' : `${pct}%` }} />
+                    </div>
+                    {status === 'done' && report && (
+                      <div className="an-mini">
+                        <span className="an-miniError">{report.errorCount} erros</span>
+                        <span className="an-miniSug">{report.suggestionCount} sugestões</span>
+                        <span className="an-miniOk">{report.approvalCount} ok</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Stage: Report ────────────────────────────────────────────────────────
+    function Report() {
+      const dispatch = useAppDispatch();
+      const { config, languageReports } = useAppState();
+      const [activeLang,     setActiveLang]     = useState(null);
+      const [filter,         setFilter]         = useState('');
+      const [activeCategory, setActiveCategory] = useState('all');
+
+      const langs   = config.targetLangs;
+      const reports = Object.values(languageReports);
+
+      const selectedLang  = activeLang ?? langs[0] ?? null;
+      const currentReport = selectedLang ? languageReports[selectedLang] : null;
+
+      const totalErrors      = reports.reduce((s,r) => s + r.errorCount, 0);
+      const totalSuggestions = reports.reduce((s,r) => s + r.suggestionCount, 0);
+      const totalApprovals   = reports.reduce((s,r) => s + r.approvalCount, 0);
+
+      const filtered = (currentReport?.results ?? []).filter(r => {
+        if (activeCategory !== 'all' && r.category !== activeCategory) return false;
+        if (filter) {
+          const q = filter.toLowerCase();
+          return r.sourceText.toLowerCase().includes(q) || r.translatedText.toLowerCase().includes(q) || r.explanation.toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      const CATEGORY_TABS = [
+        { key:'all',        label:'Todos'      },
+        { key:'error',      label:'Erros'      },
+        { key:'suggestion', label:'Sugestões'  },
+        { key:'approval',   label:'Aprovações' },
+      ];
+
+      return (
+        <div className="rp-page">
+          <div className="rp-container">
+            <div className="rp-topBar">
+              <div className="rp-headline">
+                <h1 className="rp-title">Relatório de QA</h1>
+                {config.detectedContext && <p className="rp-context">{config.detectedContext}</p>}
+              </div>
+              <button className="rp-resetBtn" onClick={() => dispatch({ type:'RESET' })}>
+                <IconRotateCcw size={14} /> Novo projeto
+              </button>
+            </div>
+
+            <div className="rp-stats">
+              <div className="rp-stat rp-statError">
+                <IconAlertCircle size={18} />
+                <span className="rp-statNum">{totalErrors}</span>
+                <span className="rp-statLabel">Erros</span>
+              </div>
+              <div className="rp-stat rp-statSuggestion">
+                <IconLightbulb size={18} />
+                <span className="rp-statNum">{totalSuggestions}</span>
+                <span className="rp-statLabel">Sugestões</span>
+              </div>
+              <div className="rp-stat rp-statApproval">
+                <IconCheckCircle size={18} />
+                <span className="rp-statNum">{totalApprovals}</span>
+                <span className="rp-statLabel">Aprovações</span>
+              </div>
+            </div>
+
+            <div className="rp-langTabs">
+              {langs.map(lang => {
+                const rep = languageReports[lang];
+                return (
+                  <button
+                    key={lang}
+                    className={`rp-langTab${lang === selectedLang ? ' rp-langTabActive' : ''}`}
+                    onClick={() => setActiveLang(lang)}
+                  >
+                    <span className="rp-langTabCode">{lang}</span>
+                    {rep && (
+                      <span className="rp-langTabBadge">
+                        {rep.errorCount > 0      && <span className="rp-badgeError">{rep.errorCount}</span>}
+                        {rep.suggestionCount > 0 && <span className="rp-badgeSug">{rep.suggestionCount}</span>}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rp-controls">
+              <div className="rp-searchWrap">
+                <IconSearch size={14} className="rp-searchIcon" />
+                <input
+                  type="text"
+                  placeholder="Filtrar por texto..."
+                  className="rp-searchInput"
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                />
+              </div>
+              <div className="rp-tabs">
+                {CATEGORY_TABS.map(tab => (
+                  <button
+                    key={tab.key}
+                    className={`rp-tab${activeCategory === tab.key ? ' rp-tabActive' : ''}`}
+                    onClick={() => setActiveCategory(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rp-results">
+              {filtered.length === 0 ? (
+                <div className="rp-empty">
+                  {currentReport?.results.length === 0
+                    ? 'Sem resultados para este idioma.'
+                    : 'Nenhum resultado para o filtro atual.'}
+                </div>
+              ) : (
+                filtered.map(r => <ResultCard key={`${r.rowIndex}-${r.targetLang}`} result={r} />)
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── App root ─────────────────────────────────────────────────────────────
+    function App() {
+      const { stage } = useAppState();
+      return (
+        <>
+          <StageHeader current={stage} />
+          {stage === 'setup'   && <Setup />}
+          {stage === 'upload'  && <Upload />}
+          {stage === 'analyse' && <Analyse />}
+          {stage === 'report'  && <Report />}
+        </>
+      );
+    }
+
+    function Root() {
+      const [state, dispatch] = useReducer(reducer, initialState);
+      return (
+        <AppStateContext.Provider value={state}>
+          <AppDispatchContext.Provider value={dispatch}>
+            <App />
+          </AppDispatchContext.Provider>
+        </AppStateContext.Provider>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+</body>
+</html>

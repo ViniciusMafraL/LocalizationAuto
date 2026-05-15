@@ -5,7 +5,7 @@ import { useAppState } from '../../store/useAppStore';
 import styles from './Analyse.module.css';
 
 export function Analyse() {
-  const { config, languageReports } = useAppState();
+  const { config, languageReports, batchProgress } = useAppState();
   const { run } = useAnalysisRunner();
   const started = useRef(false);
 
@@ -16,18 +16,95 @@ export function Analyse() {
     }
   }, [run]);
 
-  const langs = config.targetLangs;
+  const langs = config.inputMode === 'image' ? ['__image__'] : config.targetLangs;
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.headline}>
-          <h1 className={styles.title}>Analisando traduções</h1>
+          <div className={styles.loaderDots}>
+            <span /><span /><span />
+          </div>
+          <h1 className={styles.title}>
+            {config.inputMode === 'image' ? 'Analisando screenshot...' : 'Analisando idiomas...'}
+          </h1>
           <p className={styles.subtitle}>
-            Claude está revisando cada idioma. Isso pode levar alguns minutos.
+            {config.inputMode === 'image'
+              ? 'Aguarde — o modelo está lendo todos os textos'
+              : 'Processando um idioma por vez'}
           </p>
         </div>
 
+        {/* Language chips */}
+        <div className={styles.langChips}>
+          {langs.map((lang) => {
+            const report = languageReports[lang];
+            const status = report?.status ?? 'pending';
+            const isActive = batchProgress?.langCode === lang;
+            return (
+              <div
+                key={lang}
+                className={`${styles.langChip} ${isActive ? styles.chipActive : ''} ${status === 'done' ? styles.chipDone : ''} ${status === 'error' ? styles.chipError : ''}`}
+              >
+                <span className={styles.chipFlag}>
+                  {lang === '__image__' ? '📸' : '🌐'}
+                </span>
+                <span>{lang === '__image__' ? 'Screenshot' : lang}</span>
+                <span className={styles.chipStatus}>
+                  {status === 'pending' && '⏳'}
+                  {status === 'analyzing' && '⏳'}
+                  {status === 'done' && '✅'}
+                  {status === 'error' && '❌'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Batch panel */}
+        {batchProgress && (
+          <div className={styles.batchPanel}>
+            <div className={styles.batchLangLabel}>
+              <span>{batchProgress.langFlag}</span>
+              <span>{batchProgress.langName}</span>
+            </div>
+            <div className={styles.batchLotLabel}>
+              Lote {batchProgress.batchIndex}/{batchProgress.totalBatches}
+              {batchProgress.batchSize > 0 && ` · ${batchProgress.batchSize} strings`}
+            </div>
+            <div className={styles.batchBarWrap}>
+              <div
+                className={styles.batchBarFill}
+                style={{
+                  width: batchProgress.totalBatches > 0
+                    ? `${Math.round((batchProgress.batchIndex / batchProgress.totalBatches) * 100)}%`
+                    : '0%',
+                }}
+              />
+            </div>
+            <div className={styles.batchStringsRow}>
+              <span>{batchProgress.stringsDone} strings analisadas</span>
+              <span>de {batchProgress.stringsTotal}</span>
+            </div>
+            {batchProgress.log.length > 0 && (
+              <div className={styles.batchLog}>
+                {batchProgress.log.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`${styles.batchLogLine} ${entry.status === 'done' ? styles.logDone : ''} ${entry.status === 'error' ? styles.logErr : ''} ${entry.status === 'active' ? styles.logActive : ''}`}
+                  >
+                    {entry.status === 'done' && '✅ '}
+                    {entry.status === 'error' && '❌ '}
+                    {entry.status === 'active' && '⏳ '}
+                    {entry.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Individual lang cards */}
         <div className={styles.cards}>
           {langs.map((lang) => {
             const report = languageReports[lang];
@@ -37,9 +114,11 @@ export function Analyse() {
             const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
 
             return (
-              <div key={lang} className={`${styles.card} ${styles[status]}`}>
+              <div key={lang} className={`${styles.card} ${styles[status] ?? ''}`}>
                 <div className={styles.cardTop}>
-                  <span className={styles.langCode}>{lang}</span>
+                  <span className={styles.langCode}>
+                    {lang === '__image__' ? '📸 Screenshot' : lang}
+                  </span>
                   <div className={styles.statusIcon}>
                     {status === 'analyzing' && <Loader2 size={18} className={styles.spinner} />}
                     {status === 'done' && <CheckCircle2 size={18} className={styles.iconDone} />}
@@ -49,8 +128,8 @@ export function Analyse() {
 
                 <div className={styles.statusText}>
                   {status === 'pending' && 'Aguardando...'}
-                  {status === 'analyzing' && `${progress} / ${total} linhas`}
-                  {status === 'done' && `${total} linhas concluídas`}
+                  {status === 'analyzing' && (lang === '__image__' ? 'Analisando...' : `${progress} / ${total} linhas`)}
+                  {status === 'done' && (lang === '__image__' ? 'Análise concluída' : `${total} linhas concluídas`)}
                   {status === 'error' && 'Erro na análise'}
                 </div>
 

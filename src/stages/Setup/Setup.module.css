@@ -143,6 +143,34 @@
   flex-shrink: 0;
 }
 
+.sectionHint {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: -6px;
+}
+
+.langAnchor {
+  border-color: var(--accent2, #7b6ff0);
+  background: rgba(123, 111, 240, 0.08);
+  cursor: default;
+}
+
+.langAnchor .langCode {
+  color: var(--accent2, #7b6ff0);
+}
+
+.langDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warn {
+  font-size: 13px;
+  color: var(--red, #f06060);
+  font-style: italic;
+}
+
 /* CTA */
 .cta {
   align-self: flex-start;

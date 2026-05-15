@@ -4,34 +4,46 @@ import { useAppDispatch, useAppState } from '../../store/useAppStore';
 import styles from './Setup.module.css';
 
 const PROJECT_TYPES: { value: ProjectType; label: string; desc: string; icon: string }[] = [
-  { value: 'casual_game', label: 'Casual Game', desc: 'Tom leve, energético, frases curtas', icon: '🎮' },
-  { value: 'formal_app', label: 'Formal App', desc: 'Tom profissional, técnico, preciso', icon: '💼' },
-  { value: 'mixed', label: 'Mixed', desc: 'Contexto variado, tom misto', icon: '🔀' },
+  { value: 'casual_game', label: 'Jogo Casual', desc: 'Tom leve, direto, divertido. Emojis aceitáveis.', icon: '🎮' },
+  { value: 'formal_app', label: 'App Formal', desc: 'Tom profissional, neutro. Terminologia técnica.', icon: '💼' },
+  { value: 'mixed', label: 'Outro / Misto', desc: 'Produto com seções de tons diferentes.', icon: '⚡' },
 ];
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'pt-br', label: 'Português BR', flag: '🇧🇷' },
-  { code: 'pt', label: 'Português', flag: '🇵🇹' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'pt-BR', label: 'Português BR', flag: '🇧🇷' },
+  { code: 'fr-FR', label: 'Français', flag: '🇫🇷' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  { code: 'zh-cn', label: '中文 (简体)', flag: '🇨🇳' },
-  { code: 'zh-tw', label: '中文 (繁體)', flag: '🇹🇼' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
 ];
 
 export function Setup() {
   const dispatch = useAppDispatch();
   const { config } = useAppState();
   const [projectType, setProjectType] = useState<ProjectType>(config.projectType);
-  const [sourceLang, setSourceLang] = useState(config.sourceLang);
+  const [sourceLang, setSourceLang] = useState(config.sourceLang || 'en');
+  const [targetLangs, setTargetLangs] = useState<string[]>(config.targetLangs);
+  const [warn, setWarn] = useState('');
+
+  function handleSelectAnchor(code: string) {
+    setSourceLang(code);
+    setTargetLangs((prev) => prev.filter((l) => l !== code));
+  }
+
+  function handleToggleTarget(code: string) {
+    if (code === sourceLang) return;
+    setTargetLangs((prev) =>
+      prev.includes(code) ? prev.filter((l) => l !== code) : [...prev, code],
+    );
+  }
 
   function handleContinue() {
-    dispatch({ type: 'SET_CONFIG', payload: { projectType, sourceLang } });
+    if (!projectType) { setWarn('Selecione o tipo de projeto.'); return; }
+    if (!sourceLang) { setWarn('Selecione o idioma original.'); return; }
+    if (targetLangs.length === 0) { setWarn('Selecione ao menos um idioma alvo.'); return; }
+    setWarn('');
+    dispatch({ type: 'SET_CONFIG', payload: { projectType, sourceLang, targetLangs } });
     dispatch({ type: 'SET_STAGE', payload: 'upload' });
   }
 
@@ -41,7 +53,7 @@ export function Setup() {
         <div className={styles.headline}>
           <h1 className={styles.title}>Configuração do projeto</h1>
           <p className={styles.subtitle}>
-            Defina o contexto para que a IA calibre suas análises.
+            Defina o contexto antes de começar — isso guia toda a análise.
           </p>
         </div>
 
@@ -63,24 +75,54 @@ export function Setup() {
         </section>
 
         <section className={styles.section}>
-          <label className={styles.sectionLabel}>Idioma fonte (original)</label>
+          <label className={styles.sectionLabel}>Idioma original (âncora)</label>
+          <p className={styles.sectionHint}>O idioma-fonte dos textos — geralmente a primeira coluna de texto.</p>
           <div className={styles.langGrid}>
             {LANGUAGES.map((l) => (
               <button
                 key={l.code}
-                className={`${styles.langBtn} ${sourceLang === l.code ? styles.langSelected : ''}`}
-                onClick={() => setSourceLang(l.code)}
+                className={`${styles.langBtn} ${sourceLang === l.code ? styles.langAnchor : ''}`}
+                onClick={() => handleSelectAnchor(l.code)}
               >
                 <span className={styles.langFlag}>{l.flag}</span>
                 <span className={styles.langLabel}>{l.label}</span>
-                <span className={styles.langCode}>{l.code}</span>
+                <span className={styles.langCode}>
+                  {sourceLang === l.code ? '◆' : l.code}
+                </span>
               </button>
             ))}
           </div>
         </section>
 
+        <section className={styles.section}>
+          <label className={styles.sectionLabel}>Idiomas alvo para análise</label>
+          <p className={styles.sectionHint}>Selecione os idiomas que deseja analisar.</p>
+          <div className={styles.langGrid}>
+            {LANGUAGES.map((l) => {
+              const isAnchor = l.code === sourceLang;
+              const isSelected = targetLangs.includes(l.code);
+              return (
+                <button
+                  key={l.code}
+                  className={`${styles.langBtn} ${isAnchor ? styles.langDisabled : ''} ${isSelected && !isAnchor ? styles.langSelected : ''}`}
+                  onClick={() => handleToggleTarget(l.code)}
+                  disabled={isAnchor}
+                >
+                  <span className={styles.langFlag}>{l.flag}</span>
+                  <span className={styles.langLabel}>{l.label}</span>
+                  <span className={styles.langCode}>
+                    {isAnchor ? '—' : isSelected ? '✓' : l.code}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {warn && <p className={styles.warn}>{warn}</p>}
+
         <button className={styles.cta} onClick={handleContinue}>
-          Continuar →
+          Continuar → Upload
         </button>
       </div>
     </div>

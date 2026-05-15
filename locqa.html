@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LocQA — Localization QA Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=Literata:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0e10;--surface:#16161a;--surface2:#1e1e24;--surface3:#26262e;
+  --border:#2e2e38;--border2:#3a3a48;
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a70;
+  --accent:#c8f060;--accent2:#7b6ff0;--accent4:#60d0f0;
+  --red:#f06060;--yellow:#f0c060;--green:#60e090;
+  --r:8px;--r2:14px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Literata',Georgia,serif;font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(ellipse 80% 60% at 15% 10%,rgba(123,111,240,.08) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 85% 90%,rgba(200,240,96,.05) 0%,transparent 60%);pointer-events:none;z-index:0}
+#app{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 24px 80px}
+ 
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 20px;border-bottom:1px solid var(--border);margin-bottom:40px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.5px}
+.logo span{color:var(--accent)}
+.logo-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:.05em}
+.header-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;letter-spacing:.08em}
+ 
+/* ── STEPS ── */
+.step{display:none;animation:fadeIn .3s ease}
+.step.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+ 
+/* ── PROGRESS ── */
+.progress-bar{display:flex;align-items:center;margin-bottom:48px;font-family:'DM Mono',monospace;font-size:11px}
+.progress-step{display:flex;align-items:center;gap:8px;color:var(--text3);transition:.3s;white-space:nowrap}
+.progress-step.done{color:var(--accent)}
+.progress-step.current{color:var(--text)}
+.p-dot{width:28px;height:28px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);transition:.3s;flex-shrink:0}
+.progress-step.done .p-dot{background:var(--accent);border-color:var(--accent);color:#000}
+.progress-step.current .p-dot{border-color:var(--text);color:var(--text)}
+.p-line{flex:1;height:1px;background:var(--border);margin:0 8px;min-width:16px}
+.progress-step.done + .p-line{background:var(--accent)}
+ 
+/* ── SECTION ── */
+.section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:26px;margin-bottom:8px;letter-spacing:-.3px}
+.section-sub{color:var(--text2);font-size:14px;margin-bottom:36px;font-style:italic}
+ 
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:24px;margin-bottom:16px;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:14px;letter-spacing:.08em;text-transform:uppercase}
+.card-hint{font-size:12px;color:var(--text3);margin-bottom:14px;font-style:italic;line-height:1.5}
+ 
+/* ── OPT GRID ── */
+.opt-grid{display:grid;gap:12px}
+.opt-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.opt-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;cursor:pointer;transition:all .2s;text-align:left;color:var(--text);display:flex;align-items:flex-start;gap:12px}
+.opt-btn:hover{border-color:var(--border2);background:var(--surface3)}
+.opt-btn.selected{border-color:var(--accent);background:rgba(200,240,96,.05)}
+.opt-btn .opt-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.opt-btn .opt-label{font-family:'Syne',sans-serif;font-weight:600;font-size:14px;margin-bottom:3px}
+.opt-btn.selected .opt-label{color:var(--accent)}
+.opt-btn .opt-desc{font-size:12px;color:var(--text2);line-height:1.4}
+ 
+/* ── LANG GRID ── */
+.lang-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lang-chip{border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;background:var(--surface2);font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)}
+.lang-chip:hover{border-color:var(--border2);color:var(--text)}
+.lang-chip.anchor-lang{border-color:var(--accent2);background:rgba(123,111,240,.08);color:var(--text);cursor:default}
+.lang-chip.selected{border-color:var(--accent4);background:rgba(96,208,240,.06);color:var(--text)}
+.chip-flag{font-size:18px}
+.chip-name{flex:1}
+.chip-check{font-size:12px;color:var(--accent4)}
+.lang-chip.anchor-lang .chip-check{color:var(--accent2)}
+ 
+/* ── MODE TABS ── */
+.mode-tabs{display:flex;gap:8px;margin-bottom:20px}
+.mode-tab{flex:1;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface2);cursor:pointer;transition:all .2s;text-align:center;font-family:'Syne',sans-serif;font-weight:600;font-size:13px;color:var(--text2)}
+.mode-tab:hover{border-color:var(--border2);color:var(--text)}
+.mode-tab.active{border-color:var(--accent);background:rgba(200,240,96,.05);color:var(--accent)}
+.mode-tab .tab-icon{font-size:20px;display:block;margin-bottom:4px}
+ 
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r2);padding:48px 24px;text-align:center;cursor:pointer;transition:all .25s;position:relative;background:var(--surface2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(200,240,96,.04)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:36px;margin-bottom:12px}
+.upload-title{font-family:'Syne',sans-serif;font-weight:600;font-size:16px;margin-bottom:6px}
+.upload-hint{font-size:13px;color:var(--text3)}
+.upload-preview{display:none;margin-top:16px;border-radius:var(--r);overflow:hidden;max-height:280px;border:1px solid var(--border)}
+.upload-preview img{width:100%;max-height:280px;object-fit:contain;background:#000}
+.upload-preview.show{display:block}
+ 
+/* ── SHEET PREVIEW ── */
+.sheet-preview{display:none;margin-top:16px;background:var(--surface3);border-radius:var(--r2);border:1px solid var(--border);overflow:hidden}
+.sheet-preview.show{display:block}
+.sheet-preview-header{padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sheet-preview-header strong{color:var(--text);font-weight:500}
+.sheet-badges{display:flex;gap:6px;flex-wrap:wrap}
+.sbadge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid}
+.sbadge-blue{border-color:rgba(96,208,240,.4);color:var(--accent4);background:rgba(96,208,240,.06)}
+.sbadge-green{border-color:rgba(96,224,144,.4);color:var(--green);background:rgba(96,224,144,.06)}
+.sbadge-purple{border-color:rgba(123,111,240,.4);color:var(--accent2);background:rgba(123,111,240,.06)}
+.sheet-table-wrap{overflow-x:auto;max-height:180px;overflow-y:auto}
+.sheet-table{border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11px;min-width:100%}
+.sheet-table th{background:var(--surface2);padding:6px 12px;text-align:left;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+.sheet-table th.th-key{color:var(--accent2)}
+.sheet-table th.th-source{color:var(--accent)}
+.sheet-table th.th-lang{color:var(--accent4)}
+.sheet-table td{padding:5px 12px;border-bottom:1px solid var(--border);color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-table tr:hover td{background:var(--surface2)}
+ 
+/* ── DETECTED COLUMNS PANEL ── */
+.detected-panel{background:var(--surface2);padding:16px 20px;border-top:1px solid var(--border)}
+.detected-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.detected-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.detected-item{background:var(--surface3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;display:flex;align-items:center;gap:10px}
+.detected-item.col-key{border-color:rgba(123,111,240,.3)}
+.detected-item.col-source{border-color:rgba(200,240,96,.3)}
+.detected-item.col-lang{border-color:rgba(96,208,240,.2)}
+.detected-item.col-missing{border-color:rgba(240,96,96,.2);opacity:.6}
+.di-flag{font-size:16px;flex-shrink:0}
+.di-body{flex:1;min-width:0}
+.di-role{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.di-col{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di-status{font-size:14px;flex-shrink:0}
+.override-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.override-row label{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.col-select{background:var(--surface3);border:1px solid var(--border2);border-radius:var(--r);padding:5px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer}
+.col-select:focus{outline:none;border-color:var(--accent4)}
+ 
+/* ── BUTTONS ── */
+.btn{font-family:'Syne',sans-serif;font-weight:600;font-size:14px;padding:12px 28px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#0e0e10}
+.btn-primary:hover{background:#d8ff70;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--text2);color:var(--text)}
+.btn-row{display:flex;align-items:center;gap:12px;margin-top:32px;flex-wrap:wrap}
+.warn-msg{font-size:12px;color:var(--red);font-style:italic}
+ 
+/* ── ANALYZE HEADER ── */
+.analyze-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:20px 24px;display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.analyze-thumb{width:64px;height:64px;border-radius:var(--r);background:var(--surface3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;border:1px solid var(--border);overflow:hidden}
+.analyze-thumb img{width:100%;height:100%;object-fit:cover}
+.analyze-meta{flex:1}
+.meta-name{font-family:'Syne',sans-serif;font-weight:600;font-size:15px;margin-bottom:6px}
+.meta-tags{display:flex;gap:6px;flex-wrap:wrap}
+.meta-tag{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid}
+.tag-lang{border-color:rgba(123,111,240,.5);color:var(--accent2)}
+.tag-type{border-color:rgba(96,208,240,.5);color:var(--accent4)}
+.tag-mode{border-color:rgba(200,240,96,.5);color:var(--accent)}
+.tag-target{border-color:var(--border2);color:var(--text3)}
+ 
+/* ── LOADER ── */
+.loader-wrap{text-align:center;padding:60px 24px}
+.loader-dots{display:flex;justify-content:center;gap:8px;margin-bottom:24px}
+.loader-dots span{width:8px;height:8px;border-radius:50%;animation:bounce .9s ease-in-out infinite}
+.loader-dots span:nth-child(1){background:var(--accent)}
+.loader-dots span:nth-child(2){background:var(--accent2);animation-delay:.15s}
+.loader-dots span:nth-child(3){background:var(--accent4);animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:scale(.7);opacity:.4}40%{transform:scale(1);opacity:1}}
+.loader-title{font-family:'Syne',sans-serif;font-weight:600;font-size:18px;margin-bottom:8px}
+.loader-sub{color:var(--text2);font-size:13px;font-style:italic;margin-bottom:24px}
+.loader-lang-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:480px;margin:0 auto}
+.lang-progress-chip{
+  display:flex;align-items:center;gap:8px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  padding:7px 14px;border-radius:var(--r);
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text3);transition:all .4s;
+}
+.lang-progress-chip.active{color:var(--accent);border-color:rgba(200,240,96,.4);background:rgba(200,240,96,.06)}
+.lang-progress-chip.done{color:var(--green);border-color:rgba(96,224,144,.4);background:rgba(96,224,144,.06)}
+.lang-progress-chip.error-state{color:var(--red);border-color:rgba(240,96,96,.3)}
+.lpc-flag{font-size:15px}
+.lpc-status{font-size:13px}
+ 
+/* ── LANG LOADING SKELETON ── */
+.lang-loading-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
+  padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.llc-flag{font-size:28px}
+.llc-body{flex:1}
+.llc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:6px;color:var(--text2)}
+.llc-bar{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-bottom:6px}
+.llc-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent2),var(--accent4));width:0%;transition:width .5s ease}
+.llc-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
+.llc-badge{font-family:'DM Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--text3);white-space:nowrap}
+ 
+/* ── BATCH PROGRESS ── */
+.batch-panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:20px 24px;margin-top:24px;max-width:520px;margin-left:auto;margin-right:auto}
+.batch-lang-label{font-family:'Syne',sans-serif;font-weight:600;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.batch-lot-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:6px;letter-spacing:.06em}
+.batch-bar-wrap{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.batch-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .4s ease}
+.batch-strings-row{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)}
+.batch-log{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;max-height:90px;overflow-y:auto}
+.batch-log-line{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8;display:flex;align-items:center;gap:6px}
+.batch-log-line.done{color:var(--green)}
+.batch-log-line.active{color:var(--accent)}
+.batch-log-line.err{color:var(--red)}
+ 
+/* ── GLOBAL SUMMARY CARDS ── */
+.dash-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;position:relative;overflow:hidden}
+.summary-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.summary-card.s-err::before{background:var(--red)}
+.summary-card.s-warn::before{background:var(--yellow)}
+.summary-card.s-ok::before{background:var(--green)}
+.summary-card.s-total::before{background:var(--accent2)}
+.summary-num{font-family:'Syne',sans-serif;font-weight:800;font-size:32px;line-height:1;margin-bottom:4px}
+.summary-card.s-err .summary-num{color:var(--red)}
+.summary-card.s-warn .summary-num{color:var(--yellow)}
+.summary-card.s-ok .summary-num{color:var(--green)}
+.summary-card.s-total .summary-num{color:var(--accent2)}
+.summary-label{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
+ 
+/* ── LANGUAGE REPORT SECTIONS ── */
+.lang-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
+.lang-nav-btn{
+  display:flex;align-items:center;gap:7px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  padding:7px 14px;border-radius:var(--r);
+  border:1px solid var(--border);background:var(--surface2);
+  cursor:pointer;transition:all .2s;color:var(--text2);
+}
+.lang-nav-btn:hover{border-color:var(--border2);color:var(--text)}
+.lang-nav-btn.active{border-color:var(--accent4);background:rgba(96,208,240,.07);color:var(--text)}
+.lang-nav-btn .lnb-flag{font-size:16px}
+.lang-nav-btn .lnb-badge{
+  display:flex;align-items:center;gap:3px;font-size:9px;
+}
+.lnb-err{color:var(--red);background:rgba(240,96,96,.15);border-radius:10px;padding:1px 5px}
+.lnb-warn{color:var(--yellow);background:rgba(240,192,96,.12);border-radius:10px;padding:1px 5px}
+.lnb-ok{color:var(--green);background:rgba(96,224,144,.12);border-radius:10px;padding:1px 5px}
+ 
+.lang-section{display:none}
+.lang-section.active{display:block;animation:fadeIn .25s ease}
+ 
+.lang-section-header{
+  display:flex;align-items:center;gap:14px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r2);padding:16px 20px;margin-bottom:16px;
+}
+.lsh-flag{font-size:28px}
+.lsh-meta{flex:1}
+.lsh-name{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:4px}
+.lsh-col{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.lsh-counts{display:flex;gap:8px}
+.lsh-count{font-family:'DM Mono',monospace;font-size:11px;padding:3px 10px;border-radius:20px}
+.lsh-count.c-err{background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.25)}
+.lsh-count.c-warn{background:rgba(240,192,96,.1);color:var(--yellow);border:1px solid rgba(240,192,96,.2)}
+.lsh-count.c-ok{background:rgba(96,224,144,.1);color:var(--green);border:1px solid rgba(96,224,144,.2)}
+ 
+/* ── INNER TABS (dentro de cada lang) ── */
+.inner-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.itab{font-family:'DM Mono',monospace;font-size:11px;padding:7px 14px;cursor:pointer;border-radius:var(--r) var(--r) 0 0;color:var(--text3);border:1px solid transparent;border-bottom:none;transition:all .2s;position:relative;top:1px;display:flex;align-items:center;gap:6px}
+.itab:hover{color:var(--text2)}
+.itab.active{color:var(--text);background:var(--surface);border-color:var(--border);border-bottom-color:var(--surface)}
+.itab-badge{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700}
+.itab.it-err .itab-badge{background:var(--red);color:#fff}
+.itab.it-warn .itab-badge{background:var(--yellow);color:#000}
+.itab.it-ok .itab-badge{background:var(--green);color:#000}
+.inner-panel{display:none;padding-top:14px}
+.inner-panel.active{display:block;animation:fadeIn .2s ease}
+ 
+/* ── REPORT ITEMS ── */
+.report-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:16px 18px;margin-bottom:10px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start;transition:border-color .2s}
+.report-item:hover{border-color:var(--border2)}
+.ri-icon{width:34px;height:34px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ri-icon.err{background:rgba(240,96,96,.12)}
+.ri-icon.warn{background:rgba(240,192,96,.10)}
+.ri-icon.ok{background:rgba(96,224,144,.10)}
+.ri-key{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:2px;letter-spacing:.05em}
+.ri-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
+.ri-text{font-size:14px;margin-bottom:6px}
+.ri-compare{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.ri-original{font-family:'DM Mono',monospace;font-size:12px;background:var(--surface3);padding:3px 9px;border-radius:6px;color:var(--text2);display:inline-flex;align-items:baseline;gap:6px;word-break:break-word}
+.ri-original.error-text{color:var(--red);border:1px solid rgba(240,96,96,.2)}
+.ri-original .src-label{font-size:9px;color:var(--text3);flex-shrink:0;text-transform:uppercase;letter-spacing:.05em}
+.ri-correction{font-family:'DM Mono',monospace;font-size:12px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.2);padding:3px 9px;border-radius:6px;color:var(--accent);display:inline-flex;align-items:baseline;gap:6px;word-break:break-word}
+.ri-correction .src-label{font-size:9px;color:rgba(200,240,96,.5);flex-shrink:0;text-transform:uppercase;letter-spacing:.05em}
+.ri-badge{font-family:'DM Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.ri-badge.err{background:rgba(240,96,96,.15);color:var(--red);border:1px solid rgba(240,96,96,.3)}
+.ri-badge.warn{background:rgba(240,192,96,.12);color:var(--yellow);border:1px solid rgba(240,192,96,.25)}
+.ri-badge.ok{background:rgba(96,224,144,.12);color:var(--green);border:1px solid rgba(96,224,144,.25)}
+ 
+.empty-state{text-align:center;padding:40px 24px;color:var(--text3)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-text{font-size:14px;font-style:italic}
+ 
+/* ── API ERROR STATE ── */
+.lang-error-card{background:rgba(240,96,96,.06);border:1px solid rgba(240,96,96,.2);border-radius:var(--r2);padding:16px 20px;display:flex;gap:12px;align-items:flex-start}
+.lang-error-card .le-icon{font-size:20px;flex-shrink:0}
+.lang-error-card .le-msg{font-size:13px;color:var(--red);font-family:'DM Mono',monospace;line-height:1.5}
+ 
+.new-analysis-bar{position:fixed;bottom:24px;right:24px;z-index:100}
+ 
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+ 
+@media(max-width:640px){
+  .opt-grid.cols3{grid-template-columns:1fr 1fr}
+  .lang-grid{grid-template-columns:1fr 1fr}
+  .dash-summary{grid-template-columns:1fr 1fr}
+  .detected-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="app">
+ 
+<header>
+  <div>
+    <div class="logo">Loc<span>QA</span></div>
+    <div class="logo-sub">LOCALIZATION QUALITY ASSURANCE</div>
+  </div>
+  <div class="header-badge">v0.4 — MVP</div>
+</header>
+ 
+<!-- ══════════ STEP 1: SETUP ══════════ -->
+<div class="step active" id="step-setup">
+  <div class="progress-bar">
+    <div class="progress-step current"><div class="p-dot">1</div>Configuração</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">2</div>Upload</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">3</div>Análise</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">4</div>Relatório</div>
+  </div>
+  <div class="section-title">Configuração do projeto</div>
+  <div class="section-sub">Defina o contexto antes de começar — isso guia toda a análise.</div>
+ 
+  <div class="card">
+    <div class="card-label">Tipo de projeto</div>
+    <div class="opt-grid cols3" id="type-grid">
+      <button class="opt-btn" data-val="casual" onclick="selectType(this)">
+        <div class="opt-icon">🎮</div>
+        <div><div class="opt-label">Jogo Casual</div><div class="opt-desc">Tom leve, direto, divertido. Emojis aceitáveis.</div></div>
+      </button>
+      <button class="opt-btn" data-val="formal" onclick="selectType(this)">
+        <div class="opt-icon">💼</div>
+        <div><div class="opt-label">App Formal</div><div class="opt-desc">Tom profissional, neutro. Terminologia técnica.</div></div>
+      </button>
+      <button class="opt-btn" data-val="mixed" onclick="selectType(this)">
+        <div class="opt-icon">⚡</div>
+        <div><div class="opt-label">Outro / Misto</div><div class="opt-desc">Produto com seções de tons diferentes.</div></div>
+      </button>
+    </div>
+  </div>
+ 
+  <div class="card">
+    <div class="card-label">Idioma original (âncora)</div>
+    <div class="card-hint">O idioma-fonte dos textos na planilha — geralmente a primeira coluna de texto.</div>
+    <div class="lang-grid" id="anchor-grid">
+      <div class="lang-chip" data-val="en" onclick="selectAnchor(this)"><span class="chip-flag">🇺🇸</span><span class="chip-name">English</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="pt-BR" onclick="selectAnchor(this)"><span class="chip-flag">🇧🇷</span><span class="chip-name">Português BR</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="fr-FR" onclick="selectAnchor(this)"><span class="chip-flag">🇫🇷</span><span class="chip-name">Français</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="it" onclick="selectAnchor(this)"><span class="chip-flag">🇮🇹</span><span class="chip-name">Italiano</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="es" onclick="selectAnchor(this)"><span class="chip-flag">🇪🇸</span><span class="chip-name">Español</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="de" onclick="selectAnchor(this)"><span class="chip-flag">🇩🇪</span><span class="chip-name">Deutsch</span><span class="chip-check"></span></div>
+    </div>
+  </div>
+ 
+  <div class="card">
+    <div class="card-label">Idiomas alvo para análise</div>
+    <div class="card-hint">Selecione apenas os idiomas que deseja analisar — somente estes serão processados.</div>
+    <div class="lang-grid" id="target-grid">
+      <div class="lang-chip" data-val="en" onclick="toggleTarget(this)"><span class="chip-flag">🇺🇸</span><span class="chip-name">English</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="pt-BR" onclick="toggleTarget(this)"><span class="chip-flag">🇧🇷</span><span class="chip-name">Português BR</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="fr-FR" onclick="toggleTarget(this)"><span class="chip-flag">🇫🇷</span><span class="chip-name">Français</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="it" onclick="toggleTarget(this)"><span class="chip-flag">🇮🇹</span><span class="chip-name">Italiano</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="es" onclick="toggleTarget(this)"><span class="chip-flag">🇪🇸</span><span class="chip-name">Español</span><span class="chip-check"></span></div>
+      <div class="lang-chip" data-val="de" onclick="toggleTarget(this)"><span class="chip-flag">🇩🇪</span><span class="chip-name">Deutsch</span><span class="chip-check"></span></div>
+    </div>
+  </div>
+ 
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="goToUpload()">Continuar → Upload</button>
+    <span class="warn-msg" id="setup-warn"></span>
+  </div>
+</div>
+ 
+<!-- ══════════ STEP 2: UPLOAD ══════════ -->
+<div class="step" id="step-upload">
+  <div class="progress-bar">
+    <div class="progress-step done"><div class="p-dot">✓</div>Configuração</div>
+    <div class="p-line"></div>
+    <div class="progress-step current"><div class="p-dot">2</div>Upload</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">3</div>Análise</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">4</div>Relatório</div>
+  </div>
+  <div class="section-title">Selecione o arquivo</div>
+  <div class="section-sub">Screenshot da tela ou planilha com as strings do projeto.</div>
+ 
+  <div class="mode-tabs">
+    <div class="mode-tab active" id="tab-img" onclick="switchMode('image')">
+      <span class="tab-icon">📸</span>Imagem (screenshot)
+    </div>
+    <div class="mode-tab" id="tab-sheet" onclick="switchMode('sheet')">
+      <span class="tab-icon">📊</span>Planilha de localização
+    </div>
+  </div>
+ 
+  <!-- IMAGE MODE -->
+  <div id="mode-image">
+    <div class="upload-zone" id="drop-zone-img">
+      <input type="file" id="file-img" accept="image/png,image/jpeg,image/webp,image/gif" onchange="handleImage(this)"/>
+      <div class="upload-icon">📸</div>
+      <div class="upload-title">Arraste uma screenshot aqui</div>
+      <div class="upload-hint">PNG, JPG, WebP — máx 10 MB</div>
+      <div class="upload-preview" id="preview-wrap">
+        <img id="preview-img" src="" alt="preview"/>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- SHEET MODE -->
+  <div id="mode-sheet" style="display:none">
+    <div class="card" style="margin-bottom:12px;padding:16px 20px">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em">Estrutura esperada da planilha</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        A ferramenta detecta automaticamente: <span style="color:var(--accent2)">coluna de keys</span>, 
+        <span style="color:var(--accent)">coluna de source</span> (idioma âncora) e 
+        <span style="color:var(--accent4)">colunas de tradução por idioma</span> — compatível com o padrão Google Sheets + GOOGLETRANSLATE. 
+        Os cabeçalhos das colunas de idioma devem conter os códigos: <code style="background:var(--surface3);padding:1px 6px;border-radius:4px;font-size:11px">en, pt-BR, fr-FR, it, es, de</code>.
+      </div>
+    </div>
+ 
+    <div class="upload-zone" id="drop-zone-sheet">
+      <input type="file" id="file-sheet" accept=".xlsx,.xls,.csv" onchange="handleSheet(this)"/>
+      <div class="upload-icon">📊</div>
+      <div class="upload-title">Arraste sua planilha de localização</div>
+      <div class="upload-hint">.xlsx, .xls ou .csv — máx 10 MB</div>
+    </div>
+ 
+    <!-- Sheet detection result -->
+    <div class="sheet-preview" id="sheet-preview">
+      <div class="sheet-preview-header">
+        <strong id="sheet-filename-label">—</strong>
+        <div class="sheet-badges" id="sheet-badges"></div>
+      </div>
+      <div class="sheet-table-wrap">
+        <table class="sheet-table" id="sheet-table-el"></table>
+      </div>
+      <div class="detected-panel">
+        <div class="detected-title">Colunas detectadas</div>
+        <div class="detected-grid" id="detected-grid"></div>
+        <div class="override-row" id="override-row">
+          <label>Coluna KEY:</label>
+          <select class="col-select" id="col-key-override" onchange="applyOverrides()"></select>
+          <label>Coluna SOURCE:</label>
+          <select class="col-select" id="col-source-override" onchange="applyOverrides()"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="showStep('step-setup')">← Voltar</button>
+    <button class="btn btn-primary" onclick="goToAnalyze()" id="btn-analyze" disabled>Analisar por idioma →</button>
+    <span class="warn-msg" id="upload-warn"></span>
+  </div>
+</div>
+ 
+<!-- ══════════ STEP 3: LOADING ══════════ -->
+<div class="step" id="step-loading">
+  <div class="progress-bar">
+    <div class="progress-step done"><div class="p-dot">✓</div>Configuração</div>
+    <div class="p-line"></div>
+    <div class="progress-step done"><div class="p-dot">✓</div>Upload</div>
+    <div class="p-line"></div>
+    <div class="progress-step current"><div class="p-dot">3</div>Análise</div>
+    <div class="p-line"></div>
+    <div class="progress-step"><div class="p-dot">4</div>Relatório</div>
+  </div>
+  <div class="loader-wrap">
+    <div class="loader-dots"><span></span><span></span><span></span></div>
+    <div class="loader-title" id="loader-title">Analisando...</div>
+    <div class="loader-sub" id="loader-sub">Processando cada idioma separadamente</div>
+    <div class="loader-lang-grid" id="loader-lang-grid"></div>
+    <div class="batch-panel" id="batch-panel" style="display:none">
+      <div class="batch-lang-label" id="batch-lang-label">—</div>
+      <div class="batch-lot-label" id="batch-lot-label">Lote 1/1 · 0 strings</div>
+      <div class="batch-bar-wrap"><div class="batch-bar-fill" id="batch-bar-fill" style="width:0%"></div></div>
+      <div class="batch-strings-row">
+        <span id="batch-strings-done">0 strings analisadas</span>
+        <span id="batch-strings-total">de 0</span>
+      </div>
+      <div class="batch-log" id="batch-log"></div>
+    </div>
+  </div>
+</div>
+ 
+<!-- ══════════ STEP 4: REPORT ══════════ -->
+<div class="step" id="step-report">
+  <div class="progress-bar">
+    <div class="progress-step done"><div class="p-dot">✓</div>Configuração</div>
+    <div class="p-line"></div>
+    <div class="progress-step done"><div class="p-dot">✓</div>Upload</div>
+    <div class="p-line"></div>
+    <div class="progress-step done" id="prog-analyze"><div class="p-dot" id="prog-analyze-dot">✓</div><span id="prog-analyze-label">Análise</span></div>
+    <div class="p-line"></div>
+    <div class="progress-step current"><div class="p-dot">4</div>Relatório</div>
+  </div>
+ 
+  <!-- Banner de análise em progresso -->
+  <div id="report-analyzing-banner" style="display:none;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.2);border-radius:var(--r2);padding:12px 18px;margin-bottom:20px;display:none;align-items:center;gap:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--accent)">
+    <div class="loader-dots" style="margin:0"><span></span><span></span><span></span></div>
+    <span id="report-analyzing-text">Analisando idiomas em segundo plano...</span>
+  </div>
+ 
+  <div class="section-title">Relatório de QA</div>
+ 
+  <div class="analyze-header">
+    <div class="analyze-thumb" id="report-thumb"></div>
+    <div class="analyze-meta">
+      <div class="meta-name" id="report-filename">—</div>
+      <div class="meta-tags" id="report-tags"></div>
+    </div>
+  </div>
+ 
+  <!-- Global totals -->
+  <div class="dash-summary">
+    <div class="summary-card s-err"><div class="summary-num" id="count-err">0</div><div class="summary-label">Erros totais</div></div>
+    <div class="summary-card s-warn"><div class="summary-num" id="count-warn">0</div><div class="summary-label">Sugestões totais</div></div>
+    <div class="summary-card s-ok"><div class="summary-num" id="count-ok">0</div><div class="summary-label">Acertos totais</div></div>
+    <div class="summary-card s-total"><div class="summary-num" id="count-total">0</div><div class="summary-label">Strings analisadas</div></div>
+  </div>
+ 
+  <!-- Language navigation -->
+  <div class="lang-nav" id="lang-nav"></div>
+ 
+  <!-- Language sections injected dynamically -->
+  <div id="lang-sections"></div>
+ 
+  <div class="new-analysis-bar">
+    <button class="btn btn-primary" onclick="resetAll()">+ Nova análise</button>
+  </div>
+</div>
+ 
+</div><!-- /app -->
+<script>
+/* ══════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════ */
+const SUPPORTED_LANGS = ['en','pt-BR','fr-FR','it','es','de'];
+const LANG_META = {
+  'en':    {flag:'🇺🇸', name:'English',       col_patterns:['en','english','en-us','en_us','inglês','ingles']},
+  'pt-BR': {flag:'🇧🇷', name:'Português BR',   col_patterns:['pt-br','pt_br','ptbr','português','portugues','portuguese','brazil','brasil']},
+  'fr-FR': {flag:'🇫🇷', name:'Français',       col_patterns:['fr-fr','fr_fr','frfr','français','frances','french','fr']},
+  'it':    {flag:'🇮🇹', name:'Italiano',       col_patterns:['it','italian','italiano']},
+  'es':    {flag:'🇪🇸', name:'Español',        col_patterns:['es','español','espanol','spanish']},
+  'de':    {flag:'🇩🇪', name:'Deutsch',        col_patterns:['de','german','deutsch','alemão','alemao']},
+};
+const KEY_PATTERNS    = ['key','id','chave','string_id','string id','name','token','identifier','keys'];
+const SOURCE_PATTERNS = ['source','original','master','main','base','template'];
+const TYPE_LABELS = {
+  spelling:'Ortografia',grammar:'Gramática',truncation:'Truncamento',
+  untranslated:'Não traduzido',inconsistency:'Inconsistência',
+  regionalism:'Regionalismo',tone:'Tom',formality:'Formalidade',
+  cultural:'Cultural',missing_translation:'Tradução faltando',
+  machine_translation:'Tradução automática',context:'Fora de contexto',
+};
+const SEV_LABEL = {critical:'Crítico',high:'Alto',medium:'Médio'};
+ 
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+const S = {
+  targetLangs: [],
+  projectType: null,
+  anchorLang: null,
+  inputMode: 'image',
+  // image
+  imageFile: null, imageBase64: null,
+  // sheet
+  sheetFile: null, fileName: '',
+  sheetHeaders: [], sheetRaw: [],
+  detectedKeyCol: -1, detectedSourceCol: -1,
+  detectedLangCols: [],   // [{lang:'pt-BR', colIdx:3, colName:'pt-BR'}]
+  // results per lang
+  langResults: {},        // {lang: {errors,suggestions,ok,summary,apiError}}
+};
+ 
+/* ══════════════════════════════════════════
+   STEP 1 — SETUP
+══════════════════════════════════════════ */
+function selectType(btn){
+  document.querySelectorAll('#type-grid .opt-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected'); S.projectType=btn.dataset.val;
+}
+function selectAnchor(chip){
+  document.querySelectorAll('#anchor-grid .lang-chip').forEach(c=>{
+    c.classList.remove('anchor-lang'); c.querySelector('.chip-check').textContent='';
+  });
+  chip.classList.add('anchor-lang'); chip.querySelector('.chip-check').textContent='◆';
+  S.anchorLang=chip.dataset.val;
+  S.targetLangs=S.targetLangs.filter(l=>l!==S.anchorLang);
+  document.querySelectorAll('#target-grid .lang-chip').forEach(c=>{
+    if(c.dataset.val===S.anchorLang){c.classList.remove('selected');c.querySelector('.chip-check').textContent='';}
+  });
+}
+function toggleTarget(chip){
+  if(chip.dataset.val===S.anchorLang) return;
+  const v=chip.dataset.val;
+  if(S.targetLangs.includes(v)){
+    S.targetLangs=S.targetLangs.filter(l=>l!==v);
+    chip.classList.remove('selected'); chip.querySelector('.chip-check').textContent='';
+  } else {
+    S.targetLangs.push(v);
+    chip.classList.add('selected'); chip.querySelector('.chip-check').textContent='✓';
+  }
+}
+function goToUpload(){
+  if(!S.projectType){setWarn('setup-warn','Selecione o tipo de projeto.');return;}
+  if(!S.anchorLang){setWarn('setup-warn','Selecione o idioma original.');return;}
+  if(S.targetLangs.length===0){setWarn('setup-warn','Selecione ao menos um idioma alvo.');return;}
+  setWarn('setup-warn','');
+  showStep('step-upload');
+}
+ 
+/* ══════════════════════════════════════════
+   STEP 2 — MODE SWITCH
+══════════════════════════════════════════ */
+function switchMode(mode){
+  S.inputMode=mode;
+  document.getElementById('tab-img').classList.toggle('active',mode==='image');
+  document.getElementById('tab-sheet').classList.toggle('active',mode==='sheet');
+  document.getElementById('mode-image').style.display=mode==='image'?'block':'none';
+  document.getElementById('mode-sheet').style.display=mode==='sheet'?'block':'none';
+  document.getElementById('btn-analyze').disabled=true;
+  document.getElementById('btn-analyze').textContent=
+    mode==='sheet'?'Analisar por idioma →':'Analisar →';
+  setWarn('upload-warn','');
+}
+ 
+/* ── IMAGE ── */
+function handleImage(inp){
+  const f=inp.files[0]; if(!f) return;
+  if(f.size>10*1024*1024){setWarn('upload-warn','Arquivo muito grande (máx 10 MB).');return;}
+  S.imageFile=f; S.fileName=f.name;
+  const r=new FileReader();
+  r.onload=e=>{
+    S.imageBase64=e.target.result.split(',')[1];
+    document.getElementById('preview-img').src=e.target.result;
+    document.getElementById('preview-wrap').classList.add('show');
+    document.getElementById('btn-analyze').disabled=false;
+  };
+  r.readAsDataURL(f);
+}
+setupDrop('drop-zone-img',f=>{if(f.type.startsWith('image/')){injectFile('file-img',f,handleImage);}});
+ 
+/* ── SHEET ── */
+function handleSheet(inp){
+  const f=inp.files[0]; if(!f) return;
+  if(f.size>10*1024*1024){setWarn('upload-warn','Arquivo muito grande (máx 10 MB).');return;}
+  S.sheetFile=f; S.fileName=f.name;
+  const isCSV=f.name.toLowerCase().endsWith('.csv');
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=isCSV
+        ?XLSX.read(e.target.result,{type:'string'})
+        :XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(raw.length<2){setWarn('upload-warn','Planilha sem dados.');return;}
+ 
+      S.sheetHeaders=raw[0].map((h,i)=>h?String(h).trim():`Col${i+1}`);
+      S.sheetRaw=raw.slice(1).filter(r=>r.some(c=>String(c).trim()));
+      detectColumns();
+      renderSheetPreview();
+      document.getElementById('btn-analyze').disabled=S.detectedLangCols.length===0;
+      if(S.detectedLangCols.length===0)
+        setWarn('upload-warn','Nenhuma coluna de idioma detectada. Verifique os cabeçalhos (ex: en, pt-BR, fr-FR, it, es, de).');
+    } catch(err){setWarn('upload-warn','Erro ao ler planilha: '+err.message);}
+  };
+  isCSV?r.readAsText(f,'UTF-8'):r.readAsArrayBuffer(f);
+}
+setupDrop('drop-zone-sheet',f=>{injectFile('file-sheet',f,handleSheet);});
+ 
+/* ── COLUMN DETECTION ── */
+function detectColumns(){
+  const lh=S.sheetHeaders.map(h=>h.toLowerCase().trim());
+ 
+  // KEY col
+  S.detectedKeyCol=-1;
+  for(const pat of KEY_PATTERNS){const i=lh.findIndex(h=>h===pat||h.includes(pat));if(i>=0){S.detectedKeyCol=i;break;}}
+  if(S.detectedKeyCol<0) S.detectedKeyCol=0; // fallback col A
+ 
+  // SOURCE col — primeiro tenta anchor lang, depois padrões genéricos
+  S.detectedSourceCol=-1;
+  const anchorMeta=LANG_META[S.anchorLang];
+  if(anchorMeta){
+    for(const pat of anchorMeta.col_patterns){
+      const i=lh.findIndex(h=>h===pat||h.includes(pat));
+      if(i>=0&&i!==S.detectedKeyCol){S.detectedSourceCol=i;break;}
+    }
+  }
+  if(S.detectedSourceCol<0){
+    for(const pat of SOURCE_PATTERNS){
+      const i=lh.findIndex(h=>h===pat||h.includes(pat));
+      if(i>=0&&i!==S.detectedKeyCol){S.detectedSourceCol=i;break;}
+    }
+  }
+  // Fallback: segunda coluna não-key
+  if(S.detectedSourceCol<0){
+    for(let i=0;i<S.sheetHeaders.length;i++){if(i!==S.detectedKeyCol){S.detectedSourceCol=i;break;}}
+  }
+ 
+  // LANG cols — detecta apenas idiomas selecionados pelo usuário
+  S.detectedLangCols=[];
+  const langsToDetect=SUPPORTED_LANGS.filter(l=>S.targetLangs.includes(l));
+  for(const lang of langsToDetect){
+    if(lang===S.anchorLang) continue;
+    const meta=LANG_META[lang];
+    for(const pat of meta.col_patterns){
+      const i=lh.findIndex(h=>h===pat||h.includes(pat));
+      if(i>=0&&i!==S.detectedKeyCol&&i!==S.detectedSourceCol&&!S.detectedLangCols.find(l=>l.colIdx===i)){
+        S.detectedLangCols.push({lang,colIdx:i,colName:S.sheetHeaders[i]});
+        break;
+      }
+    }
+  }
+}
+ 
+function applyOverrides(){
+  const ki=parseInt(document.getElementById('col-key-override').value);
+  const si=parseInt(document.getElementById('col-source-override').value);
+  if(ki===si){setWarn('upload-warn','Coluna de key e source não podem ser iguais.');document.getElementById('btn-analyze').disabled=true;return;}
+  S.detectedKeyCol=ki;
+  S.detectedSourceCol=si;
+  // Re-detect lang cols excluding new key/source
+  const lh=S.sheetHeaders.map(h=>h.toLowerCase().trim());
+  S.detectedLangCols=[];
+  for(const lang of SUPPORTED_LANGS){
+    if(lang===S.anchorLang) continue;
+    const meta=LANG_META[lang];
+    for(const pat of meta.col_patterns){
+      const i=lh.findIndex(h=>h===pat||h.includes(pat));
+      if(i>=0&&i!==S.detectedKeyCol&&i!==S.detectedSourceCol&&!S.detectedLangCols.find(l=>l.colIdx===i)){
+        S.detectedLangCols.push({lang,colIdx:i,colName:S.sheetHeaders[i]});break;
+      }
+    }
+  }
+  setWarn('upload-warn','');
+  document.getElementById('btn-analyze').disabled=S.detectedLangCols.length===0;
+  renderDetectedGrid();
+}
+ 
+/* ── SHEET RENDER ── */
+function renderSheetPreview(){
+  const f=S.sheetFile;
+  document.getElementById('sheet-filename-label').textContent=f.name;
+ 
+  // Badges
+  const badgesEl=document.getElementById('sheet-badges');
+  const langCount=S.detectedLangCols.length;
+  badgesEl.innerHTML=`
+    <span class="sbadge sbadge-blue">📋 ${S.sheetRaw.length} strings</span>
+    <span class="sbadge sbadge-green">${langCount} idioma${langCount!==1?'s':''} detectado${langCount!==1?'s':''}</span>
+    <span class="sbadge sbadge-purple">Source: ${S.sheetHeaders[S.detectedSourceCol]||'?'}</span>
+  `;
+ 
+  // Table — mostrar key, source e colunas de idioma
+  const colsToShow=[S.detectedKeyCol,S.detectedSourceCol,...S.detectedLangCols.map(l=>l.colIdx)];
+  const preview=S.sheetRaw.slice(0,6);
+  const thead='<thead><tr>'+colsToShow.map(ci=>{
+    let cls='';
+    if(ci===S.detectedKeyCol) cls='th-key';
+    else if(ci===S.detectedSourceCol) cls='th-source';
+    else cls='th-lang';
+    return `<th class="${cls}">${esc(S.sheetHeaders[ci])}</th>`;
+  }).join('')+'</tr></thead>';
+  const tbody='<tbody>'+preview.map(r=>'<tr>'+colsToShow.map(ci=>`<td title="${esc(String(r[ci]||''))}">${esc(String(r[ci]||'').substring(0,50))}</td>`).join('')+'</tr>').join('')+'</tbody>';
+  document.getElementById('sheet-table-el').innerHTML=thead+tbody;
+ 
+  // Override selects
+  const opts=S.sheetHeaders.map((h,i)=>`<option value="${i}">${esc(h)}</option>`).join('');
+  document.getElementById('col-key-override').innerHTML=opts;
+  document.getElementById('col-source-override').innerHTML=opts;
+  document.getElementById('col-key-override').value=S.detectedKeyCol;
+  document.getElementById('col-source-override').value=S.detectedSourceCol;
+ 
+  renderDetectedGrid();
+  document.getElementById('sheet-preview').classList.add('show');
+}
+ 
+function renderDetectedGrid(){
+  const grid=document.getElementById('detected-grid');
+  const items=[
+    {cls:'col-key',flag:'🔑',role:'KEY',col:S.sheetHeaders[S.detectedKeyCol]||'?',ok:S.detectedKeyCol>=0},
+    {cls:'col-source',flag:LANG_META[S.anchorLang]?.flag||'📄',role:'SOURCE ('+S.anchorLang+')',col:S.sheetHeaders[S.detectedSourceCol]||'?',ok:S.detectedSourceCol>=0},
+    ...SUPPORTED_LANGS.filter(l=>l!==S.anchorLang).map(lang=>{
+      const found=S.detectedLangCols.find(l=>l.lang===lang);
+      const meta=LANG_META[lang];
+      return {cls:found?'col-lang':'col-missing',flag:meta.flag,role:lang,col:found?found.colName:'Não encontrado',ok:!!found};
+    })
+  ];
+  grid.innerHTML=items.map(it=>`
+    <div class="detected-item ${it.cls}">
+      <div class="di-flag">${it.flag}</div>
+      <div class="di-body">
+        <div class="di-role">${it.role}</div>
+        <div class="di-col">${esc(it.col)}</div>
+      </div>
+      <div class="di-status">${it.ok?'✅':'❌'}</div>
+    </div>`).join('');
+}
+ 
+/* ══════════════════════════════════════════
+   STEP 3 — ANALYSIS
+══════════════════════════════════════════ */
+async function goToAnalyze(){
+  if(S.inputMode==='image'){
+    showStep('step-loading');
+    document.getElementById('loader-title').textContent='Analisando screenshot...';
+    document.getElementById('loader-sub').textContent='Aguarde — o modelo está lendo todos os textos';
+    document.getElementById('loader-lang-grid').innerHTML='<div class="lang-progress-chip active"><span class="lpc-flag">📸</span><span>Analisando imagem</span><span class="lpc-status">⏳</span></div>';
+    try{
+      const result=await analyzeImage();
+      S.langResults={__image__:result};
+      renderImageReport(result);
+      showStep('step-report');
+    }catch(err){
+      showStep('step-upload');
+      setWarn('upload-warn','❌ '+err.message);
+    }
+    return;
+  }
+ 
+  // SHEET MODE — análise sequencial com relatório progressivo
+  showStep('step-loading');
+  document.getElementById('loader-title').textContent='Analisando idiomas...';
+  document.getElementById('loader-sub').textContent='Processando um idioma por vez';
+ 
+  const langs = S.detectedLangCols.map(l => l.lang);
+  document.getElementById('loader-lang-grid').innerHTML = langs.map(lang => {
+    const m = LANG_META[lang];
+    return `<div class="lang-progress-chip" id="chip-${lang.replace('-','_')}">
+      <span class="lpc-flag">${m.flag}</span>
+      <span>${m.name}</span>
+      <span class="lpc-status" id="lpc-status-${lang.replace('-','_')}">⏳</span>
+    </div>`;
+  }).join('');
+ 
+  S.langResults = {};
+  let firstLangDone = false;
+ 
+  for(let i = 0; i < S.detectedLangCols.length; i++){
+    const {lang, colIdx, colName} = S.detectedLangCols[i];
+    const chipId = lang.replace('-','_');
+    const meta   = LANG_META[lang];
+ 
+    document.getElementById(`chip-${chipId}`)?.classList.add('active');
+    document.getElementById('loader-sub').textContent =
+      `${meta.flag} ${meta.name} — idioma ${i+1} de ${S.detectedLangCols.length}`;
+    const bPanel = document.getElementById('batch-panel');
+    if(bPanel) bPanel.style.display = 'none';
+ 
+    try{
+      const result = await analyzeLang(lang, colIdx, colName);
+      S.langResults[lang] = result;
+      const chip = document.getElementById(`chip-${chipId}`);
+      if(chip){ chip.classList.remove('active'); chip.classList.add('done'); }
+      document.getElementById(`lpc-status-${chipId}`).textContent = '✅';
+    } catch(err){
+      S.langResults[lang] = {apiError:err.message, errors:[], suggestions:[], ok:[], summary:{total_texts:0,errors:0,warnings:0,ok:0}};
+      const chip = document.getElementById(`chip-${chipId}`);
+      if(chip){ chip.classList.remove('active'); chip.classList.add('error-state'); }
+      document.getElementById(`lpc-status-${chipId}`).textContent = '❌';
+    }
+ 
+    // ── Primeiro idioma concluído: vai para o relatório e continua em background ──
+    if(!firstLangDone){
+      firstLangDone = true;
+      initSheetReport(); // monta cabeçalho, nav e seções skeleton
+      showStep('step-report');
+      // Mostra banner "analisando em background"
+      showAnalyzingBanner(i + 1, S.detectedLangCols.length);
+    }
+ 
+    // Atualiza/adiciona a seção do idioma recém-concluído no relatório
+    upsertLangSection(lang, colName, i === 0);
+    updateReportTotals();
+ 
+    // Atualiza banner
+    if(i + 1 < S.detectedLangCols.length){
+      showAnalyzingBanner(i + 1, S.detectedLangCols.length);
+    } else {
+      hideAnalyzingBanner();
+    }
+ 
+    // Pausa entre idiomas (exceto no último)
+    if(i < S.detectedLangCols.length - 1){
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+}
+ 
+/* ── Inicializa o cabeçalho do relatório e nav/skeleton antes de tudo carregar ── */
+function initSheetReport(){
+  const tw = document.getElementById('report-thumb');
+  tw.textContent = '📊';
+  tw.style.cssText = 'width:64px;height:64px;border-radius:var(--r);background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:26px;border:1px solid var(--border);flex-shrink:0';
+ 
+  document.getElementById('report-filename').textContent = S.fileName;
+  const tl = {casual:'🎮 Casual', formal:'💼 Formal', mixed:'⚡ Misto'}[S.projectType];
+  const nLangs = S.detectedLangCols.length;
+  document.getElementById('report-tags').innerHTML = `
+    <span class="meta-tag tag-lang">${S.anchorLang}</span>
+    <span class="meta-tag tag-type">${tl}</span>
+    <span class="meta-tag tag-mode">📊 Planilha</span>
+    <span class="meta-tag tag-target">${nLangs} idioma${nLangs!==1?'s':''}</span>`;
+ 
+  // Zera contadores
+  ['count-err','count-warn','count-ok','count-total'].forEach(id =>
+    document.getElementById(id).textContent = '0');
+ 
+  // Monta nav e skeleton para todos os idiomas
+  const navEl  = document.getElementById('lang-nav');
+  const sectEl = document.getElementById('lang-sections');
+  navEl.innerHTML = '';
+  sectEl.innerHTML = '';
+ 
+  S.detectedLangCols.forEach(({lang, colName}, idx) => {
+    const meta = LANG_META[lang];
+    const lid  = lang.replace('-','_');
+ 
+    // Nav btn — começa desabilitado (sem dados ainda)
+    navEl.innerHTML += `
+      <div class="lang-nav-btn" id="lnav-${lid}" data-ready="false"
+           onclick="if(this.dataset.ready==='true') switchLangSection('${lid}')">
+        <span class="lnb-flag">${meta.flag}</span>
+        <span>${meta.name}</span>
+        <span class="lnb-badge" id="lnav-badge-${lid}">
+          <span style="color:var(--text3);font-size:9px">⏳</span>
+        </span>
+      </div>`;
+ 
+    // Skeleton de loading
+    sectEl.innerHTML += `
+      <div class="lang-section" id="lsec-${lid}">
+        <div class="lang-loading-card" id="llcard-${lid}">
+          <div class="llc-flag">${meta.flag}</div>
+          <div class="llc-body">
+            <div class="llc-title">${meta.name} — analisando...</div>
+            <div class="llc-bar"><div class="llc-bar-fill" id="llbar-${lid}" style="width:0%"></div></div>
+            <div class="llc-sub" id="llsub-${lid}">Aguardando início...</div>
+          </div>
+          <div class="llc-badge">⏳ em fila</div>
+        </div>
+      </div>`;
+  });
+ 
+  // Ativa o primeiro nav btn e seção
+  const firstLid = S.detectedLangCols[0]?.lang.replace('-','_');
+  if(firstLid){
+    document.getElementById(`lnav-${firstLid}`)?.classList.add('active');
+    document.getElementById(`lsec-${firstLid}`)?.classList.add('active');
+  }
+}
+ 
+/* ── Atualiza/substitui a seção de um idioma com dados reais ── */
+function upsertLangSection(lang, colName, isFirst){
+  const meta  = LANG_META[lang];
+  const lid   = lang.replace('-','_');
+  const r     = S.langResults[lang] || {errors:[],suggestions:[],ok:[]};
+  const errs  = (r.errors||[]).length;
+  const sugs  = (r.suggestions||[]).length;
+  const oks   = (r.ok||[]).length;
+ 
+  // Substitui o conteúdo da seção (remove skeleton, insere relatório real)
+  const sectEl = document.getElementById(`lsec-${lid}`);
+  if(sectEl){
+    sectEl.outerHTML = buildLangSection(lid, {flag:meta.flag, name:meta.name, colName}, r, false);
+  }
+ 
+  // Atualiza nav btn — habilita e adiciona badges
+  const navBtn = document.getElementById(`lnav-${lid}`);
+  if(navBtn){
+    navBtn.dataset.ready = 'true';
+    navBtn.style.cursor  = 'pointer';
+    document.getElementById(`lnav-badge-${lid}`).innerHTML = `
+      ${errs ? `<span class="lnb-err">E${errs}</span>` : ''}
+      ${sugs ? `<span class="lnb-warn">S${sugs}</span>` : ''}
+      <span class="lnb-ok">✓${oks}</span>`;
+  }
+ 
+  // Se for o primeiro pronto, ativa ele no nav e na seção
+  const anyActive = document.querySelector('.lang-nav-btn.active');
+  if(!anyActive || isFirst){
+    document.querySelectorAll('.lang-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.lang-section').forEach(s => s.classList.remove('active'));
+    navBtn?.classList.add('active');
+    document.getElementById(`lsec-${lid}`)?.classList.add('active');
+  }
+}
+ 
+/* ── Atualiza os 4 contadores globais com dados disponíveis ── */
+function updateReportTotals(){
+  let totalErr=0, totalWarn=0, totalOk=0, totalStr=0;
+  for(const {lang} of S.detectedLangCols){
+    const r = S.langResults[lang];
+    if(!r) continue;
+    totalErr  += (r.errors||[]).length;
+    totalWarn += (r.suggestions||[]).length;
+    totalOk   += (r.ok||[]).length;
+    totalStr  += r.summary?.total_texts || (r.errors||[]).length+(r.suggestions||[]).length+(r.ok||[]).length;
+  }
+  document.getElementById('count-err').textContent   = totalErr;
+  document.getElementById('count-warn').textContent  = totalWarn;
+  document.getElementById('count-ok').textContent    = totalOk;
+  document.getElementById('count-total').textContent = totalStr;
+}
+ 
+/* ── Banner de análise em progresso ── */
+function showAnalyzingBanner(doneSoFar, total){
+  const banner = document.getElementById('report-analyzing-banner');
+  if(!banner) return;
+  banner.style.display = 'flex';
+  const remaining = total - doneSoFar;
+  document.getElementById('report-analyzing-text').textContent =
+    `Analisando ${remaining} idioma${remaining!==1?'s':''} restante${remaining!==1?'s':''}...`;
+}
+function hideAnalyzingBanner(){
+  const banner = document.getElementById('report-analyzing-banner');
+  if(banner) banner.style.display = 'none';
+}
+ 
+/* ── BUILD SYSTEM PROMPT ── */
+function buildSystem(targetLang){
+  const tl={casual:'jogo casual (tom leve, engajante, divertido)',formal:'aplicativo formal (tom profissional, neutro, preciso)',mixed:'produto misto'}[S.projectType];
+  const tm=LANG_META[targetLang];
+  return `Você é um especialista sênior em QA de Localização para jogos e aplicativos digitais, com foco em ${tm?.name||targetLang}.
+ 
+Projeto: ${tl}
+Idioma original: ${S.anchorLang}
+Idioma analisado: ${targetLang} (${tm?.name||targetLang})
+ 
+CONTEXTO IMPORTANTE: As traduções foram geradas automaticamente via Google Translate (fórmula GOOGLETRANSLATE do Google Sheets). Sua tarefa é identificar:
+1. Erros de tradução automática — frases sem sentido, literais demais, saídas de contexto
+2. Falta de localização regional — expressões que não são naturais para falantes nativos de ${targetLang}
+3. Erros de ortografia e gramática na tradução
+4. Problemas de tom — muito formal ou muito informal para o tipo de projeto
+5. Referências culturais que não foram adaptadas
+6. Placeholders/variáveis ({0}, {name}, %s, etc.) que foram perdidos ou alterados na tradução
+7. Textos que ficaram em inglês (não traduzidos)
+ 
+RETORNE APENAS JSON PURO. Sem markdown, sem texto antes/depois. Começa com { termina com }.
+ 
+{
+  "summary": { "total_texts": <N>, "errors": <N>, "warnings": <N>, "ok": <N> },
+  "errors": [{
+    "id": "E001",
+    "type": "spelling|grammar|truncation|untranslated|inconsistency|machine_translation|context",
+    "key": "<string key da planilha>",
+    "source": "<texto original em ${S.anchorLang}>",
+    "translated": "<tradução atual com problema>",
+    "correction": "<sugestão de correção em ${targetLang}>",
+    "description": "<explicação objetiva do problema>",
+    "severity": "critical|high"
+  }],
+  "suggestions": [{
+    "id": "W001",
+    "type": "regionalism|tone|formality|cultural|machine_translation|context",
+    "key": "<string key>",
+    "source": "<texto original>",
+    "translated": "<tradução atual>",
+    "better": "<versão melhorada em ${targetLang}>",
+    "description": "<explicação da sugestão>"
+  }],
+  "ok": [{
+    "id": "OK001",
+    "key": "<string key>",
+    "source": "<texto original>",
+    "translated": "<tradução aprovada>",
+    "note": "<motivo breve>"
+  }]
+}
+ 
+Analise TODAS as strings. Arrays vazios [] se não houver itens.
+total_texts = errors.length + suggestions.length + ok.length`;
+}
+ 
+/* ── ANALYZE SINGLE LANG — com lotes ── */
+const BATCH_SIZE = 30; // strings por lote
+ 
+async function analyzeLang(lang, colIdx, colName){
+  const meta = LANG_META[lang];
+  const allRows = S.sheetRaw; // processa TUDO em lotes
+  const totalStrings = allRows.length;
+  const totalBatches = Math.ceil(totalStrings / BATCH_SIZE);
+ 
+  // Mostra painel de lotes
+  const panel = document.getElementById('batch-panel');
+  const labelEl = document.getElementById('batch-lang-label');
+  const lotEl   = document.getElementById('batch-lot-label');
+  const barEl   = document.getElementById('batch-bar-fill');
+  const doneEl  = document.getElementById('batch-strings-done');
+  const totalEl = document.getElementById('batch-strings-total');
+  const logEl   = document.getElementById('batch-log');
+ 
+  panel.style.display = 'block';
+  labelEl.innerHTML   = `${meta.flag} ${meta.name}`;
+  totalEl.textContent = `de ${totalStrings}`;
+  logEl.innerHTML     = '';
+  barEl.style.width   = '0%';
+  doneEl.textContent  = '0 strings analisadas';
+ 
+  // Acumula resultados de todos os lotes
+  const merged = { summary:{total_texts:0,errors:0,warnings:0,ok:0}, errors:[], suggestions:[], ok:[] };
+ 
+  for(let b=0; b<totalBatches; b++){
+    const batchStart = b * BATCH_SIZE;
+    const batchRows  = allRows.slice(batchStart, batchStart + BATCH_SIZE);
+    const batchNum   = b + 1;
+    const batchLabel = `Lote ${batchNum}/${totalBatches} · ${batchRows.length} strings`;
+ 
+    // Atualiza UI
+    lotEl.textContent = batchLabel;
+    doneEl.textContent = `${batchStart} strings analisadas`;
+    barEl.style.width  = `${Math.round((b / totalBatches) * 100)}%`;
+ 
+    // Adiciona linha no log
+    const lineId = `blog-${lang.replace('-','_')}-${b}`;
+    logEl.innerHTML += `<div class="batch-log-line active" id="${lineId}">⏳ ${batchLabel}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+ 
+    const block = batchRows.map((r, i) => {
+      const absIdx = batchStart + i + 1;
+      const key = String(r[S.detectedKeyCol]||'').trim() || `row_${absIdx}`;
+      const src = String(r[S.detectedSourceCol]||'').trim();
+      const tgt = String(r[colIdx]||'').trim();
+      return `[${absIdx}] KEY:"${key}" | ${S.anchorLang}:"${src}" | ${lang}:"${tgt}"`;
+    }).join('\n');
+ 
+    const body = JSON.stringify({
+      model:'claude-sonnet-4-20250514', max_tokens:2048,
+      system: buildSystem(lang),
+      messages:[{role:'user', content:[{type:'text', text:
+        `Analise a qualidade da tradução ${S.anchorLang} → ${lang} neste lote (${batchLabel}) da planilha "${S.fileName}":\n\n${block}\n\nRetorne o JSON completo apenas para estas ${batchRows.length} strings.`
+      }]}]
+    });
+ 
+    try{
+      const result = await fetchWithRetry('https://api.anthropic.com/v1/messages', body);
+ 
+      // Merge dos resultados
+      merged.errors.push(...(result.errors||[]).map((e,i)=>({...e, id:`E${String(merged.errors.length+i+1).padStart(3,'0')}`})));
+      merged.suggestions.push(...(result.suggestions||[]).map((w,i)=>({...w, id:`W${String(merged.suggestions.length+i+1).padStart(3,'0')}`})));
+      merged.ok.push(...(result.ok||[]).map((o,i)=>({...o, id:`OK${String(merged.ok.length+i+1).padStart(3,'0')}`})));
+ 
+      // Atualiza log linha como done
+      const lineEl = document.getElementById(lineId);
+      if(lineEl){ lineEl.className='batch-log-line done'; lineEl.textContent=`✅ ${batchLabel}`; }
+ 
+    } catch(err){
+      const lineEl = document.getElementById(lineId);
+      if(lineEl){ lineEl.className='batch-log-line err'; lineEl.textContent=`❌ ${batchLabel} — ${err.message.substring(0,60)}`; }
+      // Continua para o próximo lote mesmo com erro
+    }
+ 
+    // Pausa de 2s entre lotes (exceto no último)
+    if(b < totalBatches - 1){
+      lotEl.textContent = `Aguardando antes do lote ${batchNum+1}/${totalBatches}...`;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+ 
+  // Finaliza barra
+  barEl.style.width  = '100%';
+  doneEl.textContent = `${totalStrings} strings analisadas`;
+  lotEl.textContent  = `✅ ${totalBatches} lotes concluídos`;
+ 
+  merged.summary.total_texts = merged.errors.length + merged.suggestions.length + merged.ok.length;
+  merged.summary.errors      = merged.errors.length;
+  merged.summary.warnings    = merged.suggestions.length;
+  merged.summary.ok          = merged.ok.length;
+ 
+  return merged;
+}
+ 
+/* ── ANALYZE IMAGE ── */
+async function analyzeImage(){
+  const tl={casual:'jogo casual',formal:'aplicativo formal',mixed:'produto misto'}[S.projectType];
+  const system=`Você é especialista em QA de Localização. Projeto: ${tl}. Idioma original: ${S.anchorLang}.
+RETORNE APENAS JSON PURO:
+{"summary":{"total_texts":N,"errors":N,"warnings":N,"ok":N},
+"errors":[{"id":"E001","type":"spelling|grammar|truncation|untranslated|inconsistency","element":"<UI element>","original":"<text>","description":"<explanation>","severity":"critical|high"}],
+"suggestions":[{"id":"W001","type":"regionalism|tone|formality|cultural","element":"<UI element>","original":"<text>","description":"<suggestion>","correction":"<better version>"}],
+"ok":[{"id":"OK001","element":"<UI element>","text":"<text>","note":"<reason>"}]}
+Analise TODOS os textos visíveis. Arrays [] se vazio.`;
+ 
+  const body = JSON.stringify({
+    model:'claude-sonnet-4-20250514', max_tokens:4096, system,
+    messages:[{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:S.imageFile.type,data:S.imageBase64}},
+      {type:'text',text:'Analise todos os textos desta screenshot e retorne o JSON de QA.'}
+    ]}]
+  });
+ 
+  return fetchWithRetry('https://api.anthropic.com/v1/messages', body);
+}
+ 
+/* ── FETCH COM RETRY (trata 529 Overloaded) ── */
+// Esperas: tentativa 1→15s, 2→30s, 3→50s + jitter aleatório de até 5s
+async function fetchWithRetry(url, body, maxRetries=4){
+  let lastErr;
+  const baseWaits = [0, 15000, 30000, 50000]; // espera antes de cada tentativa
+ 
+  for(let attempt=1; attempt<=maxRetries; attempt++){
+    // Espera progressiva ANTES de tentar (exceto na primeira)
+    if(attempt > 1){
+      const jitter = Math.random() * 5000;
+      const wait = baseWaits[attempt-1] + jitter;
+      const el = document.getElementById('loader-sub');
+      if(el) el.textContent = `API sobrecarregada — aguardando ${Math.round(wait/1000)}s (tentativa ${attempt}/${maxRetries})...`;
+      console.log(`[RETRY] Aguardando ${Math.round(wait/1000)}s antes da tentativa ${attempt}/${maxRetries}`);
+      await new Promise(r => setTimeout(r, wait));
+    }
+ 
+    try{
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body
+      });
+ 
+      // 529 / 503 / 429 = sobrecarga ou rate limit — agenda próxima tentativa
+      if(res.status === 529 || res.status === 503 || res.status === 429){
+        lastErr = new Error(`API ${res.status}: Overloaded (tentativa ${attempt}/${maxRetries})`);
+        console.warn(`[RETRY] Recebeu ${res.status}, vai tentar novamente`);
+        continue; // a espera acontece no início do próximo loop
+      }
+ 
+      return await parseResp(res);
+    }
+    catch(err){
+      lastErr = err;
+      const isRetryable =
+        err.message.includes('529') ||
+        err.message.includes('Overloaded') ||
+        err.message.includes('503') ||
+        err.message.includes('429') ||
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('NetworkError');
+ 
+      if(!isRetryable) throw err; // erro definitivo, não adianta tentar de novo
+      console.warn(`[RETRY] Erro retryable na tentativa ${attempt}:`, err.message);
+    }
+  }
+  throw lastErr;
+}
+ 
+/* ── PARSE RESPONSE — VERSÃO ROBUSTA ── */
+async function parseResp(res){
+  if(!res.ok){
+    const txt=await res.text().catch(()=>'');
+    let msg=`API ${res.status}`;
+    try{const j=JSON.parse(txt);if(j.error?.message)msg+=': '+j.error.message;}catch(e){if(txt)msg+='. '+txt.substring(0,200);}
+    throw new Error(msg);
+  }
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message||'Erro na API');
+ 
+  let raw=(data.content||[]).map(b=>b.text||'').join('');
+  if(!raw) throw new Error('Resposta vazia da API');
+ 
+  // Remove markdown code blocks
+  raw = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+ 
+  // Extrai o bloco JSON
+  const start = raw.indexOf('{');
+  const end   = raw.lastIndexOf('}');
+  if(start===-1||end===-1)
+    throw new Error('Chaves JSON não encontradas. Resposta: '+raw.substring(0,300));
+ 
+  const jsonStr = raw.substring(start, end+1);
+ 
+  // ── Tentativa 1: parse direto ──
+  try{ return JSON.parse(jsonStr); }
+  catch(e1){
+    console.warn('[PARSE] Falha direta:', e1.message);
+  }
+ 
+  // ── Tentativa 2: sanitizar caracteres de controle e tentar de novo ──
+  try{
+    const sanitized = sanitizeJsonString(jsonStr);
+    return JSON.parse(sanitized);
+  }
+  catch(e2){
+    console.warn('[PARSE] Falha após sanitização:', e2.message);
+  }
+ 
+  // ── Tentativa 3: reconstruir JSON manualmente via regex ──
+  try{
+    return reconstructJson(jsonStr);
+  }
+  catch(e3){
+    console.error('[PARSE] Todas as tentativas falharam:', e3.message);
+    throw new Error('JSON inválido após 3 tentativas de correção: '+e3.message);
+  }
+}
+ 
+/* Sanitiza caracteres que corrompem o JSON */
+function sanitizeJsonString(str){
+  let result = '';
+  let inString = false;
+  let escaped = false;
+ 
+  for(let i=0; i<str.length; i++){
+    const ch = str[i];
+    const code = str.charCodeAt(i);
+ 
+    if(escaped){ result += ch; escaped=false; continue; }
+    if(ch==='\\'){ result += ch; escaped=true; continue; }
+ 
+    if(ch==='"'){
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+ 
+    if(inString){
+      // Dentro de string: escapa caracteres de controle literais
+      if(code === 0x0A){ result += '\\n'; continue; }  // newline
+      if(code === 0x0D){ result += '\\r'; continue; }  // carriage return
+      if(code === 0x09){ result += '\\t'; continue; }  // tab
+      if(code < 0x20){ result += '\\u'+code.toString(16).padStart(4,'0'); continue; }
+    }
+ 
+    result += ch;
+  }
+  return result;
+}
+ 
+/* Reconstrói o JSON extraindo arrays via regex quando parse falha */
+function reconstructJson(str){
+  const getVal = (key) => {
+    // Tenta extrair número
+    const numM = str.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`));
+    if(numM) return parseInt(numM[1]);
+    return 0;
+  };
+ 
+  const summary = {
+    total_texts: getVal('total_texts'),
+    errors:      getVal('errors'),
+    warnings:    getVal('warnings'),
+    ok:          getVal('ok'),
+  };
+ 
+  // Extrai cada array separando os objetos {} manualmente
+  const extractArray = (arrayName) => {
+    const arrMatch = str.match(new RegExp(`"${arrayName}"\\s*:\\s*\\[([\\s\\S]*?)\\](?=\\s*[,}])`));
+    if(!arrMatch) return [];
+ 
+    const content = arrMatch[1].trim();
+    if(!content) return [];
+ 
+    // Divide em objetos individuais respeitando profundidade de chaves
+    const objects = [];
+    let depth=0, objStart=-1;
+    for(let i=0;i<content.length;i++){
+      if(content[i]==='{'){
+        if(depth===0) objStart=i;
+        depth++;
+      } else if(content[i]==='}'){
+        depth--;
+        if(depth===0 && objStart>=0){
+          const objStr = content.substring(objStart, i+1);
+          try{
+            objects.push(JSON.parse(sanitizeJsonString(objStr)));
+          } catch(e){
+            // Se ainda falhar, tenta extrair campos com regex
+            objects.push(extractFieldsFromObject(objStr));
+          }
+          objStart=-1;
+        }
+      }
+    }
+    return objects.filter(o=>o&&Object.keys(o).length>0);
+  };
+ 
+  // Extrai campos de um objeto via regex (último recurso)
+  const extractFieldsFromObject = (objStr) => {
+    const obj = {};
+    const fieldRe = /"(\w+)"\s*:\s*("(?:[^"\\]|\\.)*"|[\d]+|true|false|null)/g;
+    let m;
+    while((m=fieldRe.exec(objStr))!==null){
+      try{ obj[m[1]] = JSON.parse(m[2]); } catch(e){ obj[m[1]] = m[2]; }
+    }
+    return obj;
+  };
+ 
+  return {
+    summary,
+    errors:      extractArray('errors'),
+    suggestions: extractArray('suggestions'),
+    ok:          extractArray('ok'),
+  };
+}
+ 
+/* ══════════════════════════════════════════
+   STEP 4 — RENDER REPORT
+══════════════════════════════════════════ */
+ 
+/* ── IMAGE REPORT (unchanged) ── */
+function renderImageReport(data){
+  const tw=document.getElementById('report-thumb');
+  tw.innerHTML=`<img src="data:${S.imageFile.type};base64,${S.imageBase64}" alt=""/>`;
+  document.getElementById('report-filename').textContent=S.fileName;
+  const tl={casual:'🎮 Casual',formal:'💼 Formal',mixed:'⚡ Misto'}[S.projectType];
+  document.getElementById('report-tags').innerHTML=`
+    <span class="meta-tag tag-lang">${S.anchorLang}</span>
+    <span class="meta-tag tag-type">${tl}</span>
+    <span class="meta-tag tag-mode">📸 Screenshot</span>`;
+  const errs=data.errors||[],sugs=data.suggestions||[],oks=data.ok||[];
+  const total=data.summary?.total_texts||(errs.length+sugs.length+oks.length);
+  document.getElementById('count-err').textContent=errs.length;
+  document.getElementById('count-warn').textContent=sugs.length;
+  document.getElementById('count-ok').textContent=oks.length;
+  document.getElementById('count-total').textContent=total;
+ 
+  // Single lang nav button for image mode
+  document.getElementById('lang-nav').innerHTML='';
+  document.getElementById('lang-sections').innerHTML=buildLangSection('__image__',{
+    flag:'📸',name:'Screenshot',colName:''
+  },data);
+  document.getElementById('lang-sections').querySelector('.lang-section')?.classList.add('active');
+}
+ 
+/* renderSheetReport removido — substituído por initSheetReport + upsertLangSection + updateReportTotals */
+ 
+function buildLangSection(langId, meta, data, isActive=true){
+  const errs=data.errors||[],sugs=data.suggestions||[],oks=data.ok||[];
+  const isImage=langId==='__image__';
+ 
+  const errHtml=errs.length
+    ? errs.map(e=>`
+        <div class="report-item">
+          <div class="ri-icon err">🚨</div>
+          <div>
+            ${e.key?`<div class="ri-key">KEY: ${esc(e.key)}</div>`:''}
+            <div class="ri-label">${esc(e.id||'')} · ${TYPE_LABELS[e.type]||esc(e.type||'')} · ${esc(e.element||e.key||'')}</div>
+            <div class="ri-text">${esc(e.description||'')}</div>
+            ${isImage
+              ? `<div class="ri-original error-text"><span class="src-label">original</span>${esc(e.original||'')}</div>`
+              : `<div class="ri-compare">
+                  <div class="ri-original"><span class="src-label">source</span>${esc(e.source||e.original||'')}</div>
+                  <div class="ri-original error-text"><span class="src-label">tradução</span>${esc(e.translated||e.original||'')}</div>
+                  ${e.correction?`<div class="ri-correction"><span class="src-label">correção</span>${esc(e.correction)}</div>`:''}
+                </div>`
+            }
+          </div>
+          <div class="ri-badge err">${SEV_LABEL[e.severity]||esc(e.severity||'—')}</div>
+        </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">Nenhum erro encontrado.</div></div>`;
+ 
+  const sugHtml=sugs.length
+    ? sugs.map(w=>`
+        <div class="report-item">
+          <div class="ri-icon warn">💡</div>
+          <div>
+            ${w.key?`<div class="ri-key">KEY: ${esc(w.key)}</div>`:''}
+            <div class="ri-label">${esc(w.id||'')} · ${TYPE_LABELS[w.type]||esc(w.type||'')} · ${esc(w.element||w.key||'')}</div>
+            <div class="ri-text">${esc(w.description||'')}</div>
+            ${isImage
+              ? `<div class="ri-original"><span class="src-label">original</span>${esc(w.original||'')}</div>
+                 ${w.correction?`<div class="ri-correction"><span class="src-label">sugestão</span>${esc(w.correction)}</div>`:''}`
+              : `<div class="ri-compare">
+                  <div class="ri-original"><span class="src-label">source</span>${esc(w.source||'')}</div>
+                  <div class="ri-original"><span class="src-label">tradução atual</span>${esc(w.translated||'')}</div>
+                  ${w.better?`<div class="ri-correction"><span class="src-label">sugestão</span>${esc(w.better)}</div>`:''}
+                </div>`
+            }
+          </div>
+          <div class="ri-badge warn">Sugestão</div>
+        </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">💡</div><div class="empty-text">Sem sugestões.</div></div>`;
+ 
+  const okHtml=oks.length
+    ? oks.map(o=>`
+        <div class="report-item">
+          <div class="ri-icon ok">✅</div>
+          <div>
+            ${o.key?`<div class="ri-key">KEY: ${esc(o.key)}</div>`:''}
+            <div class="ri-label">${esc(o.id||'')} · ${esc(o.element||o.key||'')}</div>
+            ${isImage
+              ? `<div class="ri-original">${esc(o.text||'')}</div>`
+              : `<div class="ri-compare">
+                  <div class="ri-original"><span class="src-label">source</span>${esc(o.source||'')}</div>
+                  <div class="ri-original"><span class="src-label">tradução</span>${esc(o.translated||o.text||'')}</div>
+                </div>`
+            }
+            <div class="ri-text" style="color:var(--text3);font-size:13px">${esc(o.note||'')}</div>
+          </div>
+          <div class="ri-badge ok">OK</div>
+        </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sem textos aprovados.</div></div>`;
+ 
+  const apiErr=data.apiError?`
+    <div class="lang-error-card" style="margin-bottom:16px">
+      <div class="le-icon">❌</div>
+      <div class="le-msg">Erro na análise deste idioma: ${esc(data.apiError)}</div>
+    </div>`:'';
+ 
+  const firstTab=errs.length?'errors':sugs.length?'suggestions':'ok';
+ 
+  return `
+  <div class="lang-section${isActive?' active':''}" id="lsec-${langId}">
+    ${!isImage?`
+    <div class="lang-section-header">
+      <div class="lsh-flag">${meta.flag}</div>
+      <div class="lsh-meta">
+        <div class="lsh-name">${meta.name}</div>
+        <div class="lsh-col">Coluna: <strong>${esc(meta.colName||'')}</strong></div>
+      </div>
+      <div class="lsh-counts">
+        <span class="lsh-count c-err">🚨 ${errs.length} erro${errs.length!==1?'s':''}</span>
+        <span class="lsh-count c-warn">💡 ${sugs.length} sugestão${sugs.length!==1?'ões':''}</span>
+        <span class="lsh-count c-ok">✅ ${oks.length} ok</span>
+      </div>
+    </div>`:''}
+    ${apiErr}
+    <div class="inner-tabs">
+      <div class="itab it-err${firstTab==='errors'?' active':''}" onclick="switchInner('${langId}','errors',this)"><span>Erros</span><span class="itab-badge">${errs.length}</span></div>
+      <div class="itab it-warn${firstTab==='suggestions'?' active':''}" onclick="switchInner('${langId}','suggestions',this)"><span>Sugestões</span><span class="itab-badge">${sugs.length}</span></div>
+      <div class="itab it-ok${firstTab==='ok'?' active':''}" onclick="switchInner('${langId}','ok',this)"><span>Acertos</span><span class="itab-badge">${oks.length}</span></div>
+    </div>
+    <div class="inner-panel${firstTab==='errors'?' active':''}" id="ipanel-${langId}-errors">${errHtml}</div>
+    <div class="inner-panel${firstTab==='suggestions'?' active':''}" id="ipanel-${langId}-suggestions">${sugHtml}</div>
+    <div class="inner-panel${firstTab==='ok'?' active':''}" id="ipanel-${langId}-ok">${okHtml}</div>
+  </div>`;
+}
+ 
+/* ── NAV FUNCTIONS ── */
+function switchLangSection(langId){
+  document.querySelectorAll('.lang-nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.lang-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('lnav-'+langId)?.classList.add('active');
+  document.getElementById('lsec-'+langId)?.classList.add('active');
+}
+function switchInner(langId,panel,el){
+  const sec=document.getElementById('lsec-'+langId);
+  sec.querySelectorAll('.itab').forEach(t=>t.classList.remove('active'));
+  sec.querySelectorAll('.inner-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`ipanel-${langId}-${panel}`)?.classList.add('active');
+}
+ 
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function showStep(id){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function setWarn(id,msg){const el=document.getElementById(id);if(el)el.textContent=msg;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setupDrop(zoneId,cb){
+  const z=document.getElementById(zoneId);
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)cb(f);});
+}
+function injectFile(inputId,file,handler){
+  const dt=new DataTransfer();dt.items.add(file);
+  const inp=document.getElementById(inputId);inp.files=dt.files;handler(inp);
+}
+ 
+function resetAll(){
+  Object.assign(S,{
+    projectType:null,anchorLang:null,targetLangs:[],inputMode:'image',
+    imageFile:null,imageBase64:null,
+    sheetFile:null,fileName:'',
+    sheetHeaders:[],sheetRaw:[],
+    detectedKeyCol:-1,detectedSourceCol:-1,detectedLangCols:[],
+    langResults:{},
+  });
+  document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#anchor-grid .lang-chip').forEach(c=>{c.classList.remove('anchor-lang');c.querySelector('.chip-check').textContent='';});
+  document.querySelectorAll('#target-grid .lang-chip').forEach(c=>{c.classList.remove('selected');c.querySelector('.chip-check').textContent='';});
+  document.getElementById('preview-wrap').classList.remove('show');
+  document.getElementById('sheet-preview').classList.remove('show');
+  document.getElementById('btn-analyze').disabled=true;
+  setWarn('setup-warn',''); setWarn('upload-warn','');
+  document.getElementById('file-img').value='';
+  document.getElementById('file-sheet').value='';
+  document.getElementById('lang-nav').innerHTML='';
+  document.getElementById('lang-sections').innerHTML='';
+  switchMode('image');
+  showStep('step-setup');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+LocQA — Como a ferramenta funciona
+Visão geral
+É uma aplicação web single-page (um único arquivo .html) sem backend próprio. Todo o processamento acontece no browser do usuário. A única dependência externa é a API da Anthropic (claude-sonnet-4-20250514), chamada diretamente via fetch pelo front-end, e a biblioteca SheetJS (via CDN) para leitura de planilhas.
+
+Arquitetura geral
+Estado global S{}  →  4 Steps (telas)  →  API Anthropic
+O objeto S é o coração da aplicação — um estado global único que guarda tudo: configurações do projeto, arquivo carregado, colunas detectadas, resultados por idioma. Não há localStorage, não há servidor, tudo vive na memória enquanto a aba está aberta.
+A navegação entre telas funciona por CSS: só o .step.active fica visível, os outros têm display:none. A função showStep(id) troca qual é o ativo.
+
+Step 1 — Configuração
+O usuário define 3 coisas que ficam salvas em S:
+Tipo de projeto (S.projectType): Jogo Casual, App Formal ou Misto. Isso vai direto no system prompt da API — define o tom esperado nas análises.
+Idioma âncora (S.anchorLang): o idioma de origem dos textos. Quando selecionado, automaticamente remove esse idioma da lista de alvos, impedindo que seja analisado contra si mesmo.
+Idiomas alvo (S.targetLangs[]): os idiomas a analisar. Cada seleção é um toggle — clicou de novo, desmarca.
+A validação só deixa avançar se os três estiverem preenchidos e houver ao menos um alvo.
+
+Step 2 — Upload (dois modos)
+Modo Imagem (screenshot)
+O usuário sobe um PNG/JPG/WebP de até 10 MB. O arquivo é lido com FileReader.readAsDataURL, o base64 é extraído e guardado em S.imageBase64. A análise depois manda essa imagem diretamente para a API via type: "image" no payload. Suporta drag and drop.
+Modo Planilha (xlsx/xls/csv)
+O arquivo é lido com SheetJS. Para CSV usa readAsText, para Excel usa readAsArrayBuffer. O resultado é convertido para array de arrays com sheet_to_json({header:1}). A primeira linha vira S.sheetHeaders, as demais viram S.sheetRaw.
+Detecção automática de colunas (detectColumns): percorre os cabeçalhos em lowercase e cruza com listas de padrões conhecidos:
+
+Coluna KEY: procura key, id, chave, token, etc. Fallback: coluna A
+Coluna SOURCE: procura pelos padrões do idioma âncora primeiro (ex: en, english, en-us), depois padrões genéricos como source, original, master. Fallback: segunda coluna que não seja a key
+Colunas de idioma alvo: para cada idioma selecionado, procura padrões específicos (pt-br, ptbr, português, brazil, etc.)
+
+Depois da detecção, renderiza um preview com tabela mostrando as primeiras 6 linhas e um painel "Colunas detectadas" com ✅/❌ para cada coluna. O usuário pode corrigir manualmente via dois <select> para key e source se a detecção errar.
+
+Step 3 — Loading e Análise
+Modo Imagem
+Uma única chamada à API com a imagem em base64. O system prompt instrui a retornar JSON puro com erros de ortografia, gramática, truncamento, textos não traduzidos e inconsistências visíveis na tela.
+Modo Planilha — o fluxo principal
+Processamento sequencial por idioma: os idiomas são processados um de cada vez (não em paralelo) para evitar sobrecarga da API. Há 3 segundos de pausa entre cada idioma.
+Sistema de lotes (analyzeLang): cada idioma é dividido em lotes de 30 strings (BATCH_SIZE = 30). Se a planilha tem 120 strings, serão 4 lotes de 30 — cada lote é uma chamada separada à API com max_tokens: 2048. O painel de lotes na tela mostra em tempo real:
+
+Lote 2/4 · 30 strings
+Barra de progresso preenchendo gradualmente
+Contador 60 strings analisadas de 120
+Log rolante com ✅/❌ por lote
+
+Para cada lote, monta um bloco de texto no formato:
+[1] KEY:"btn_play" | en:"Play" | it:"Giocare"
+[2] KEY:"btn_retry" | en:"Retry" | it:"Riprova"
+Esse bloco vai no prompt do usuário junto com o system prompt que define o contexto do projeto.
+Os resultados de todos os lotes são mergeados automaticamente — os arrays errors, suggestions e ok são concatenados e os IDs reindexados sequencialmente (E001, E002...).
+Relatório progressivo: quando o primeiro idioma termina, a tela já avança para o relatório sem esperar os demais. Os idiomas ainda em processamento aparecem como cards skeleton com animação de pulse. Conforme cada idioma conclui, o skeleton é substituído pelo relatório real via upsertLangSection. Os 4 contadores globais e o banner "Analisando X idiomas restantes..." atualizam em tempo real.
+Sistema de retry (fetchWithRetry): até 4 tentativas por chamada, com esperas progressivas de 15s → 30s → 50s mais jitter aleatório de até 5s. Trata especificamente os status 529 (API Overloaded), 503 e 429 (rate limit). Erros definitivos (JSON inválido, auth error) quebram imediatamente sem esperar.
+Parser de JSON robusto (parseResp): 3 camadas de fallback:
+
+JSON.parse direto
+Sanitização character-by-character — percorre o texto token a token detectando se está dentro de uma string e escapando \n, \r, \t e outros caracteres de controle sem tocar no restante (resolve o problema de apóstrofos e aspas em textos em italiano, francês, etc.)
+Reconstrução manual por regex — extrai cada array separando objetos {} por profundidade de chaves, campo a campo. Garante que um único objeto corrompido não derrube toda a resposta do lote.
+
+
+Step 4 — Relatório
+Estrutura visual
+4 cards de totais globais: Erros, Sugestões, Acertos e Strings analisadas — atualizam em tempo real conforme idiomas vão concluindo.
+Navegação por idioma: botões com flag + nome + badges de contagem (E12, S8, ✓40). Ficam desabilitados e com ⏳ enquanto o idioma ainda carrega, habilitam automaticamente ao terminar.
+Dentro de cada idioma — 3 abas:
+
+Erros (🚨 vermelho): problemas que precisam de correção. Cada item mostra a key, o tipo (ortografia, gramática, tradução automática, etc.), descrição do problema, texto source, tradução com problema e sugestão de correção. Badge de severidade: Crítico ou Alto.
+Sugestões (💡 amarelo): melhorias de regionalismo, tom, formalidade, cultural. Mostra source, tradução atual e versão melhorada.
+Acertos (✅ verde): strings aprovadas com nota do motivo.
+
+A aba que abre por padrão é a que tem conteúdo — se há erros, abre em Erros; se só sugestões, abre em Sugestões; se tudo OK, abre em Acertos.
+Tipos de problema identificados pela API
+Erros: spelling, grammar, truncation, untranslated, inconsistency, machine_translation, context
+Sugestões: regionalism, tone, formality, cultural, machine_translation, context
+O que o system prompt instrui a API a verificar
+
+Erros de tradução automática (literais demais, sem sentido)
+Falta de localização regional (expressões não naturais para falantes nativos)
+Erros de ortografia e gramática
+Tom inadequado para o tipo de projeto
+Referências culturais não adaptadas
+Placeholders perdidos ou alterados ({0}, {name}, %s)
+Textos que ficaram em inglês sem traduzir
+
+
+Idiomas suportados
+Inglês (en), Português BR (pt-BR), Francês (fr-FR), Italiano (it), Espanhol (es), Alemão (de) — com dezenas de variações de nome de coluna aceitas para cada um.
+
+Reset
+O botão "+ Nova análise" chama resetAll() que zera o objeto S por completo, limpa todos os elementos do DOM e volta para o Step 1, pronto para uma nova sessão.
